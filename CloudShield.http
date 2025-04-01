@@ -1,0 +1,6 @@
+@CloudShield_HostAddress = http://localhost:5030
+
+GET {{CloudShield_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
