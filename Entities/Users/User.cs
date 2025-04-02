@@ -13,6 +13,7 @@ public class User : BaseAbstract
     public DateTime Dob { get; set; }
     public required string Email { get; set; }
     public required string Password { get; set; }
+    public  required string  Phone { get; set; }
     public required bool IsActive { get; set; }
     public required bool Confirm { get; set; }
 

@@ -360,6 +360,7 @@ public class ApplicationDbContext : DbContext
         Name="Admin",
         Email="jturbi@syschar.com",
         Password="Lavacaloca@123",
+        Phone="8294627091",
         Confirm=true,
         IsActive=true,
         
