@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Services.UserServices;
 
 namespace CloudShield.Repositories.Users;
-public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
+public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate, ISaveServices
 {
 
   private readonly ApplicationDbContext _context;
@@ -39,7 +39,7 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
     var reponse = await Exists(userDTO);
     if (reponse)
     {
-        //!realizar el log
+      //!realizar el log
       return new ApiResponse<bool>(false, "User Exists");
     }
 
@@ -52,6 +52,62 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
     _log.LogInformation("Se registro el usuario exitosamente");
     return new ApiResponse<bool>(success: result, message: result == false ? "An Error Ocurred" : "User was Saved");
 
+  }
+
+  //todo get all users
+  public async Task<ApiResponse<List<UserDTO>>> GetAllUsers()
+  {
+    try
+    {
+      var users = await _context.User
+        .Include(u => u.Address)
+          .ThenInclude(a => a.Country)
+        .Include(u => u.Address)
+          .ThenInclude(a => a.State)
+        // .Include(u => u.Sessions)
+        .ToListAsync();
+
+      var userDTOs = _mapper.Map<List<UserDTO>>(users);
+
+      _log.LogInformation("Retrieved {Count} users from the database.", userDTOs.Count);
+
+      return new ApiResponse<List<UserDTO>>(true, "Users retrieved successfully", data: userDTOs);
+    }
+    catch (Exception ex)
+    {
+      _log.LogError(ex, "Error occurred while retrieving All users.");
+      return new ApiResponse<List<UserDTO>>(false, "Error occurred while retrieving users.");
+    }
+  }
+
+  //todo get user by id
+  public async Task<ApiResponse<UserDTO>> GetUserById(int id)
+  {
+    try
+    {
+      var user = await _context.User
+        .Include(u => u.Address)
+            .ThenInclude(a => a.Country)
+        .Include(u => u.Address)
+            .ThenInclude(a => a.State)
+        // .Include(u => u.Sessions)
+        .FirstOrDefaultAsync(u => u.Id == id);
+
+      if (user == null)
+      {
+        _log.LogWarning("User not found for ID: {Id}", id);
+        return new ApiResponse<UserDTO>(false, "User not found");
+      }
+
+      var userDTO = _mapper.Map<UserDTO>(user);
+      _log.LogInformation("User with ID {Id} retrieved successfully.", id);
+      return new ApiResponse<UserDTO>(true, "User retrieved successfully", data: userDTO);
+    }
+    catch (Exception Exception)
+    {
+      _log.LogError(Exception, "Error occurred while retrieving user with ID: {Id}", id);
+      return new ApiResponse<UserDTO>(false, "Error occurred while retrieving user");
+    }
   }
 
   //todo to save data
@@ -69,56 +125,53 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
     }
   }
 
-    //todo update user
-    public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
+  //todo update user
+  public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
+  {
+    try
     {
-        if (userDTO == null || userDTO.Id == 0)
-        {
-            return new ApiResponse<bool>(false, "Invalid user data");
-        }
+      if (userDTO == null || userDTO.Id == 0)
+      {
+        return new ApiResponse<bool>(false, "Invalid user data");
+      }
 
-        var user = await _context.User.FindAsync(userDTO.Id);
-        if (user == null)
-        {
-            return new ApiResponse<bool>(false, "User not found");
-        }
+      var user = await _context.User
+        .Include(u => u.Address)
+        .FirstOrDefaultAsync(u => u.Id == userDTO.Id);
 
-        // todo validate email for no repeat
-        if (!string.Equals(user.Email, userDTO.Email, StringComparison.OrdinalIgnoreCase))
-        {
-          bool emailExists = await _context.User.AnyAsync(u => u.Email == userDTO.Email && u.Id != userDTO.Id);
-          //todo validate if email exists          
-          if (emailExists)
-          {
-            return new ApiResponse<bool>(false, "Email already exists");
-          }
-        }
+      if (user == null)
+      {
+        return new ApiResponse<bool>(false, "User not found");
+      }
 
-        //todo use AutoMapper to map the properties
-        _mapper.Map(userDTO, user);
+      //todo use AutoMapper to map the properties
+      _mapper.Map(userDTO, user);
 
-        //todo update datetime
-        user.UpdateAt = DateTime.UtcNow;
+      //todo update datetime
+      user.UpdateAt = DateTime.UtcNow;
 
-        // todo save changes
-        bool result = await Save();
-        if (result)
-        {
-            _log.LogInformation("User updated successfully");
-            return new ApiResponse<bool>(true, "User updated successfully", result);
-        }
-        else
-        {
-            _log.LogError("Error occurred while updating user with ID: {Id}", userDTO.Id);
-            return new ApiResponse<bool>(false, "Error occurred while updating user");
-        }
+      // todo save changes
+      bool result = await Save();
+      if (result)
+      {
+        _log.LogInformation("User updated successfully");
+        return new ApiResponse<bool>(true, "User updated successfully", result);
+      }
+      else
+      {
+        _log.LogError("Error occurred while updating user with ID: {Id}", userDTO.Id);
+        return new ApiResponse<bool>(false, "Error occurred while updating user");
+      }
     }
+    catch (Exception ex)
+    {
+      _log.LogError(ex, "Exception occurred while updating user with ID: {Id}", userDTO.Id);
+      return new ApiResponse<bool>(false, "An exception occurred while updating user");
+    }
+  }
 
-
-
-    //todo validate if users Exists
-
-    private async Task<bool> Exists(UserDTO userDTO)
+  //todo validate if users Exists
+  private async Task<bool> Exists(UserDTO userDTO)
   {
     try
     {

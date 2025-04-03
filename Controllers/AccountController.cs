@@ -12,11 +12,13 @@ namespace CloudShield.Controllers
   {
     private readonly IUserCommandCreate _user;
     private readonly IUserCommandsUpdate _userUpdate;
+    private readonly IUserCommandRead _userRead;
 
-    public AccountController(IUserCommandCreate user, IUserCommandsUpdate userUpdate)
+    public AccountController(IUserCommandCreate user, IUserCommandsUpdate userUpdate, IUserCommandRead userRead)
     {
       _user = user;
       _userUpdate = userUpdate;
+      _userRead = userRead;
     }
 
     [HttpPost("Add")]
@@ -40,6 +42,26 @@ namespace CloudShield.Controllers
       }
 
       return Ok(new { result });
+    }
+
+    [HttpGet("GetAllUser")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+      var result = await _userRead.GetAllUsers();
+
+      if (!result.Success) return BadRequest(result);
+
+      return Ok(result);
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetUserById([FromRoute] int id)
+    {
+      var result = await _userRead.GetUserById(id);
+
+      if (!result.Success) return NotFound(result);
+
+      return Ok(result);
     }
   }
 }
