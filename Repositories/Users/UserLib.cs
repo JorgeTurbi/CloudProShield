@@ -115,7 +115,7 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   {
     try
     {
-      return await _context.SaveChangesAsync(cancellationToken) > 0 ? true : false;
+      return await _context.SaveChangesAsync(cancellationToken) > 0;
     }
     catch (Exception ex)
     {

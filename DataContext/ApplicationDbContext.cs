@@ -60,16 +60,16 @@ public class ApplicationDbContext : DbContext
 
     //todo Address to Country
     model.Entity<Address>()
-    .HasOne(u => u.Country)
-    .WithOne(a => a.Address)
-    .HasForeignKey<Address>(a => a.CountryId)
+    .HasOne(a => a.Country)
+    .WithMany()
+    .HasForeignKey(a => a.CountryId)
     .OnDelete(DeleteBehavior.NoAction);
 
     //todo Address to To State
     model.Entity<Address>()
-    .HasOne(u => u.State)
-    .WithOne(a => a.Address)
-    .HasForeignKey<Address>(a => a.StateId)
+    .HasOne(a => a.State)
+    .WithMany()
+    .HasForeignKey(a => a.StateId)
     .OnDelete(DeleteBehavior.NoAction);
 
     //todo state to country 
