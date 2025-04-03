@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Services.UserServices;
 
 namespace CloudShield.Repositories.Users;
-public class UserLib : IUserCommandCreate, ISaveServices
+public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
 {
 
   private readonly ApplicationDbContext _context;
@@ -69,11 +69,56 @@ public class UserLib : IUserCommandCreate, ISaveServices
     }
   }
 
+    //todo update user
+    public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
+    {
+        if (userDTO == null || userDTO.Id == 0)
+        {
+            return new ApiResponse<bool>(false, "Invalid user data");
+        }
+
+        var user = await _context.User.FindAsync(userDTO.Id);
+        if (user == null)
+        {
+            return new ApiResponse<bool>(false, "User not found");
+        }
+
+        // todo validate email for no repeat
+        if (!string.Equals(user.Email, userDTO.Email, StringComparison.OrdinalIgnoreCase))
+        {
+          bool emailExists = await _context.User.AnyAsync(u => u.Email == userDTO.Email && u.Id != userDTO.Id);
+          //todo validate if email exists          
+          if (emailExists)
+          {
+            return new ApiResponse<bool>(false, "Email already exists");
+          }
+        }
+
+        //todo use AutoMapper to map the properties
+        _mapper.Map(userDTO, user);
+
+        //todo update datetime
+        user.UpdateAt = DateTime.UtcNow;
+
+        // todo save changes
+        bool result = await Save();
+        if (result)
+        {
+            _log.LogInformation("User updated successfully");
+            return new ApiResponse<bool>(true, "User updated successfully", result);
+        }
+        else
+        {
+            _log.LogError("Error occurred while updating user with ID: {Id}", userDTO.Id);
+            return new ApiResponse<bool>(false, "Error occurred while updating user");
+        }
+    }
 
 
-  //todo validate if users Exists
 
-  private async Task<bool> Exists(UserDTO userDTO)
+    //todo validate if users Exists
+
+    private async Task<bool> Exists(UserDTO userDTO)
   {
     try
     {

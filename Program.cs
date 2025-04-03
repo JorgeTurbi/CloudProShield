@@ -14,6 +14,7 @@ var connectionString = builder.Configuration.GetConnectionString("LogConnectionS
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
 
         builder.Services.AddScoped<IUserCommandCreate,UserLib>();
+        builder.Services.AddScoped<IUserCommandsUpdate,UserLib>();
 
 
 
