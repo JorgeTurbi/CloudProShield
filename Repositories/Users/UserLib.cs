@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AutoMapper;
 using Commons;
 using Commons.Utils;
@@ -6,6 +7,7 @@ using DTOs;
 using Entities.Users;
 using Microsoft.EntityFrameworkCore;
 using Services.UserServices;
+using Users;
 
 namespace CloudShield.Repositories.Users;
 public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate, ISaveServices
@@ -55,28 +57,50 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   }
 
   //todo get all users
-  public async Task<ApiResponse<List<UserDTO>>> GetAllUsers()
+  public async Task<ApiResponse<List<UserListDTO>>> GetAllUsers()
   {
     try
     {
-      var users = await _context.User
-        .Include(u => u.Address)
-          .ThenInclude(a => a.Country)
-        .Include(u => u.Address)
-          .ThenInclude(a => a.State)
-        // .Include(u => u.Sessions)
-        .ToListAsync();
+      // var users = await _context.User
+      //   .Include(u => u.Address)
+      //     .ThenInclude(a => a.Country)
+      //   .Include(u => u.Address)
+      //     .ThenInclude(a => a.State)
+      //   // .Include(u => u.Sessions)
+      //   .ToListAsync();
 
-      var userDTOs = _mapper.Map<List<UserDTO>>(users);
+      List<UserListDTO> usersList =await (from u in _context.User
+        join a in _context.Address on u.Id equals a.UserId
+        join co in _context.Country on a.CountryId equals co.Id
+        join st in _context.State on a.StateId equals st.Id
+        join c in _context.Country on a.CountryId equals c.Id
+        join s in _context.State on a.StateId equals s.Id
+        select new UserListDTO
+        {
+          Id = u.Id,
+          Name = u.Name,  
+          SurName = u.SurName,
+          Email = u.Email,
+          Phone = u.Phone,
+          Country = co.Name,          
+          State = st.Name,
+          City = a.City,
+          Street = a.Street,
+          Line = a.Line,
+          ZipCode = a.ZipCode,
+        
+        }).ToListAsync();
+        
+      var userDTOs = _mapper.Map<List<UserListDTO>>(usersList);
 
       _log.LogInformation("Retrieved {Count} users from the database.", userDTOs.Count);
 
-      return new ApiResponse<List<UserDTO>>(true, "Users retrieved successfully", data: userDTOs);
+      return new ApiResponse<List<UserListDTO>>(true, "Users retrieved successfully", data: userDTOs);
     }
     catch (Exception ex)
     {
       _log.LogError(ex, "Error occurred while retrieving All users.");
-      return new ApiResponse<List<UserDTO>>(false, "Error occurred while retrieving users.");
+      return new ApiResponse<List<UserListDTO>>(false, "Error occurred while retrieving users.");
     }
   }
 
@@ -134,7 +158,7 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
       {
         return new ApiResponse<bool>(false, "Invalid user data");
       }
-
+          
       var user = await _context.User
         .Include(u => u.Address)
         .FirstOrDefaultAsync(u => u.Id == userDTO.Id);

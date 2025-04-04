@@ -2,6 +2,7 @@
 using AutoMapper;
 using DTOs;
 using Entities.Users;
+using Users;
 
 namespace CloudShield.Profiles;
 
@@ -10,7 +11,7 @@ public class UserProfile : Profile
   public UserProfile()
   {
     CreateMap<UserDTO, User>().ReverseMap();
-    
+    CreateMap<UserListDTO, UserListDTO>().ReverseMap();
     // Map User -> UserDTO (aplanado en Address)
     CreateMap<User, UserDTO>()
                 .ForMember(dest => dest.CountryId, opt => opt.MapFrom(src => src.Address.CountryId))
