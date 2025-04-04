@@ -1,5 +1,5 @@
-using System.Runtime.CompilerServices;
 using AutoMapper;
+using CloudShield.Entities.Users;
 using Commons;
 using Commons.Utils;
 using DataContext;
@@ -26,19 +26,17 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   }
 
   //todo Create a new User, it response an object type ApiResponse with boolean data
-  public async Task<ApiResponse<bool>> AddNew(UserDTO userDTO, CancellationToken cancellationToken = default)
+  public async Task<ApiResponse<bool>> AddNew(UserCreateUpdateDTO userDTO, CancellationToken cancellationToken = default)
   {
     //todo validations if user is empty or null
-
     if (string.IsNullOrEmpty(userDTO.Email))
     {
       //!realizar el log
       return new ApiResponse<bool>(false, "Email Account Invalid");
-
-
     }
+
     //todo validate if exists email account
-    var reponse = await Exists(userDTO);
+    var reponse = await Exists(userDTO.Email);
     if (reponse)
     {
       //!realizar el log
@@ -46,14 +44,15 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
     }
 
     //todo mapping before save in database
+    var user = _mapper.Map<User>(userDTO);
+    var address = _mapper.Map<Address>(userDTO);
+    user.Address = address;
 
-    var Selected = _mapper.Map<User>(userDTO);
-
-    await _context.User.AddAsync(Selected);
+    await _context.User.AddAsync(user, cancellationToken);
     bool result = await Save();
-    _log.LogInformation("Se registro el usuario exitosamente");
-    return new ApiResponse<bool>(success: result, message: result == false ? "An Error Ocurred" : "User was Saved");
-
+    _log.LogInformation("User registered successfully: {Email}", userDTO.Email);
+    return new ApiResponse<bool>(success: result, 
+        message: result ? "User was saved successfully" : "An error occurred");
   }
 
   //todo get all users
@@ -61,41 +60,30 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   {
     try
     {
-      // var users = await _context.User
-      //   .Include(u => u.Address)
-      //     .ThenInclude(a => a.Country)
-      //   .Include(u => u.Address)
-      //     .ThenInclude(a => a.State)
-      //   // .Include(u => u.Sessions)
-      //   .ToListAsync();
-
-      List<UserListDTO> usersList =await (from u in _context.User
-        join a in _context.Address on u.Id equals a.UserId
-        join co in _context.Country on a.CountryId equals co.Id
-        join st in _context.State on a.StateId equals st.Id
-        join c in _context.Country on a.CountryId equals c.Id
-        join s in _context.State on a.StateId equals s.Id
-        select new UserListDTO
-        {
-          Id = u.Id,
-          Name = u.Name,  
-          SurName = u.SurName,
-          Email = u.Email,
-          Phone = u.Phone,
-          Country = co.Name,          
-          State = st.Name,
-          City = a.City,
-          Street = a.Street,
-          Line = a.Line,
-          ZipCode = a.ZipCode,
+      var users = await _context.User
+            .Include(u => u.Address)
+                .ThenInclude(a => a.Country)
+            .Include(u => u.Address)
+                .ThenInclude(a => a.State)
+            .Select(u => new UserListDTO
+            {
+                Id = u.Id,
+                Name = u.Name,
+                SurName = u.SurName,
+                Email = u.Email,
+                Phone = u.Phone,
+                Dob = u.Dob,
+                Street = u.Address != null ? u.Address.Street : null,
+                Line = u.Address != null ? u.Address.Line : null,
+                ZipCode = u.Address != null ? u.Address.ZipCode : null,
+                Country = u.Address != null && u.Address.Country != null ? u.Address.Country.Name : null,
+                State = u.Address != null && u.Address.State != null ? u.Address.State.Name : null,
+                City = u.Address != null ? u.Address.City : null
+            })
+            .ToListAsync();
         
-        }).ToListAsync();
-        
-      var userDTOs = _mapper.Map<List<UserListDTO>>(usersList);
-
-      _log.LogInformation("Retrieved {Count} users from the database.", userDTOs.Count);
-
-      return new ApiResponse<List<UserListDTO>>(true, "Users retrieved successfully", data: userDTOs);
+      _log.LogInformation("Retrieved {Count} users from the database.", users.Count);
+      return new ApiResponse<List<UserListDTO>>(true, "Users retrieved successfully", data: users);
     }
     catch (Exception ex)
     {
@@ -105,32 +93,47 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   }
 
   //todo get user by id
-  public async Task<ApiResponse<UserDTO>> GetUserById(int id)
+  public async Task<ApiResponse<UserDetailDTO>> GetUserById(int id)
   {
     try
     {
       var user = await _context.User
-        .Include(u => u.Address)
-            .ThenInclude(a => a.Country)
-        .Include(u => u.Address)
-            .ThenInclude(a => a.State)
-        // .Include(u => u.Sessions)
-        .FirstOrDefaultAsync(u => u.Id == id);
+            .Include(u => u.Address)
+                .ThenInclude(a => a.Country)
+            .Include(u => u.Address)
+                .ThenInclude(a => a.State)
+            .Where(u => u.Id == id)
+            .Select(u => new UserDetailDTO
+            {
+                Id = u.Id,
+                Name = u.Name,
+                SurName = u.SurName,
+                Email = u.Email,
+                Phone = u.Phone,
+                CountryId = u.Address != null ? u.Address.CountryId : 0,
+                CountryName = u.Address != null && u.Address.Country != null ? u.Address.Country.Name : null,
+                StateId = u.Address != null ? u.Address.StateId : 0,
+                StateName = u.Address != null && u.Address.State != null ? u.Address.State.Name : null,
+                City = u.Address != null ? u.Address.City : null,
+                Street = u.Address != null ? u.Address.Street : null,
+                Line = u.Address != null ? u.Address.Line : null,
+                ZipCode = u.Address != null ? u.Address.ZipCode : null
+            })
+            .FirstOrDefaultAsync();
 
       if (user == null)
       {
         _log.LogWarning("User not found for ID: {Id}", id);
-        return new ApiResponse<UserDTO>(false, "User not found");
+        return new ApiResponse<UserDetailDTO>(false, "User not found");
       }
 
-      var userDTO = _mapper.Map<UserDTO>(user);
       _log.LogInformation("User with ID {Id} retrieved successfully.", id);
-      return new ApiResponse<UserDTO>(true, "User retrieved successfully", data: userDTO);
+      return new ApiResponse<UserDetailDTO>(true, "User retrieved successfully", data: user);
     }
     catch (Exception Exception)
     {
       _log.LogError(Exception, "Error occurred while retrieving user with ID: {Id}", id);
-      return new ApiResponse<UserDTO>(false, "Error occurred while retrieving user");
+      return new ApiResponse<UserDetailDTO>(false, "Error occurred while retrieving user");
     }
   }
 
@@ -150,7 +153,7 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   }
 
   //todo update user
-  public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
+  public async Task<ApiResponse<bool>> Update(UserCreateUpdateDTO userDTO)
   {
     try
     {
@@ -168,17 +171,35 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
         return new ApiResponse<bool>(false, "User not found");
       }
 
-      //todo use AutoMapper to map the properties
-      _mapper.Map(userDTO, user);
-
-      //todo update datetime
+      // todo update user with manual map for control by the best process
+      user.Name = userDTO.Name;
+      user.SurName = userDTO.SurName;
+      user.Email = userDTO.Email;
+      user.Phone = userDTO.Phone;
+      user.Dob = userDTO.Dob;
       user.UpdateAt = DateTime.UtcNow;
+
+      // only update the possword if is provided
+       // todo hash the password
+      if (!string.IsNullOrEmpty(userDTO.Password))
+      {
+          user.Password = userDTO.Password; // Aquí deberías hashear la contraseña
+      }
+
+      // Actualizar o crear dirección si es necesario
+      user.Address.CountryId = userDTO.CountryId;
+      user.Address.StateId = userDTO.StateId;
+      user.Address.City = userDTO.City;
+      user.Address.Street = userDTO.Street;
+      user.Address.Line = userDTO.Line;
+      user.Address.ZipCode = userDTO.ZipCode;
+      user.Address.UpdateAt = DateTime.UtcNow;
 
       // todo save changes
       bool result = await Save();
       if (result)
       {
-        _log.LogInformation("User updated successfully");
+        _log.LogInformation("User updated successfully: ID {Id}.", userDTO.Id);
         return new ApiResponse<bool>(true, "User updated successfully", result);
       }
       else
@@ -195,11 +216,11 @@ public class UserLib : IUserCommandCreate, IUserCommandRead, IUserCommandsUpdate
   }
 
   //todo validate if users Exists
-  private async Task<bool> Exists(UserDTO userDTO)
+  private async Task<bool> Exists(string email)
   {
     try
     {
-      return await _context.User.FirstOrDefaultAsync(a => a.Email == userDTO.Email) != null;
+      return await _context.User.AnyAsync(a => a.Email == email);
     }
     catch (Exception ex)
     {

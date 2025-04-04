@@ -22,7 +22,7 @@ namespace CloudShield.Controllers
     }
 
     [HttpPost("Add")]
-    public async Task<IActionResult> Add([FromBody] UserDTO user)
+    public async Task<IActionResult> Add([FromBody] UserCreateUpdateDTO user)
     {
       ApiResponse<bool> result = await _user.AddNew(user);
 
@@ -32,7 +32,7 @@ namespace CloudShield.Controllers
     }
 
     [HttpPut("Update")]
-    public async Task<IActionResult> Update([FromBody] UserDTO userDto)
+    public async Task<IActionResult> Update([FromBody] UserCreateUpdateDTO userDto)
     {
       var result = await _userUpdate.Update(userDto);
 

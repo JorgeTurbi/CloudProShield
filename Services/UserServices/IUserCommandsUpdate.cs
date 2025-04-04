@@ -5,5 +5,5 @@ namespace Services.UserServices;
 
 public interface IUserCommandsUpdate
 {
-    Task<ApiResponse<bool>> Update(UserDTO userDTO);
+  Task<ApiResponse<bool>> Update(UserCreateUpdateDTO userDTO);
 }

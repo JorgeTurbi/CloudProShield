@@ -7,5 +7,5 @@ namespace Services.UserServices;
 public interface IUserCommandRead
 {
   Task<ApiResponse<List<UserListDTO>>> GetAllUsers();
-  Task<ApiResponse<UserDTO>> GetUserById(int id);
+  Task<ApiResponse<UserDetailDTO>> GetUserById(int id);
 }
