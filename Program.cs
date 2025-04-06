@@ -1,39 +1,43 @@
 using CloudShield.Repositories.Users;
 using DataContext;
 using Microsoft.EntityFrameworkCore;
+using Repositories.Address_Repository;
 using Scalar.AspNetCore;
 using Serilog;
-
-
+using Services.AddressServices;
 using Services.UserServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
 // Leer la cadena desde la configuración
 var connectionString = builder.Configuration.GetConnectionString("LogConnectionString");
+// path to the log folder
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
 
-        builder.Services.AddScoped<IUserCommandCreate,UserLib>();
-
-
-
+    
+// create log folder if it does not exists
 if (!Directory.Exists(logFolderPath))
 {
     Directory.CreateDirectory(logFolderPath);
 }
 
-//todo LogConfiguration
-if (!Directory.Exists(logFolderPath))
-{
-    Directory.CreateDirectory(logFolderPath);
-}
-
+// configure serilog
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)  // Lee la configuración desde appsettings.json
+    .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console()  // Enviar logs a la consola
-    .WriteTo.File(Path.Combine(logFolderPath, "logApplicatios-.txt"), rollingInterval: RollingInterval.Day)  // Guardar logs en archivo diario
+    .WriteTo.Console()
+    .WriteTo.File(
+        Path.Combine(logFolderPath, "logApplication-.txt"),
+        rollingInterval: RollingInterval.Day
+    )
     .CreateLogger();
+
+    // Use Serilog
+builder.Host.UseSerilog();
+
+//todo services configuration
+    builder.Services.AddScoped<IUserCommandCreate,UserLib>();
+builder.Services.AddScoped<IAddress,AddressLib>();
 
 
 builder.Services.AddControllers();

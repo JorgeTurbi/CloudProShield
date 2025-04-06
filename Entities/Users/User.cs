@@ -1,6 +1,7 @@
 using CloudShield.Commons;
+using CloudShield.Entities.Entity_Address;
 using CloudShield.Entities.Role;
-using CloudShield.Entities.Users;
+
 
 namespace Entities.Users;
 

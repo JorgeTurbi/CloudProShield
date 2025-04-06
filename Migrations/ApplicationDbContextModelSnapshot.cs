@@ -22,6 +22,55 @@ namespace CloudShield.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CloudShield.Entities.Entity_Address.Address", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CountryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Line")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Street")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ZipCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CountryId")
+                        .IsUnique();
+
+                    b.HasIndex("StateId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Address");
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Role.Permissions", b =>
                 {
                     b.Property<int>("Id")
@@ -159,55 +208,6 @@ namespace CloudShield.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RolePermissions");
-                });
-
-            modelBuilder.Entity("CloudShield.Entities.Users.Address", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("City")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("CountryId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreateAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Line")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("StateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Street")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdateAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ZipCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CountryId")
-                        .IsUnique();
-
-                    b.HasIndex("StateId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("Address");
                 });
 
             modelBuilder.Entity("Entities.Users.Country", b =>
@@ -1455,6 +1455,314 @@ namespace CloudShield.Migrations
                     b.HasIndex("CountryId");
 
                     b.ToTable("State");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CountryId = 220,
+                            Name = "Alabama"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CountryId = 220,
+                            Name = "Alaska"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CountryId = 220,
+                            Name = "Arizona"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CountryId = 220,
+                            Name = "Arkansas"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CountryId = 220,
+                            Name = "California"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CountryId = 220,
+                            Name = "Colorado"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CountryId = 220,
+                            Name = "Connecticut"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CountryId = 220,
+                            Name = "Delaware"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CountryId = 220,
+                            Name = "Florida"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CountryId = 220,
+                            Name = "Georgia"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CountryId = 220,
+                            Name = "Hawaii"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CountryId = 220,
+                            Name = "Idaho"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CountryId = 220,
+                            Name = "Illinois"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CountryId = 220,
+                            Name = "Indiana"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CountryId = 220,
+                            Name = "Iowa"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CountryId = 220,
+                            Name = "Kansas"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CountryId = 220,
+                            Name = "Kentucky"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CountryId = 220,
+                            Name = "Louisiana"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CountryId = 220,
+                            Name = "Maine"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CountryId = 220,
+                            Name = "Maryland"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CountryId = 220,
+                            Name = "Massachusetts"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CountryId = 220,
+                            Name = "Michigan"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CountryId = 220,
+                            Name = "Minnesota"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            CountryId = 220,
+                            Name = "Mississippi"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            CountryId = 220,
+                            Name = "Missouri"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            CountryId = 220,
+                            Name = "Montana"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            CountryId = 220,
+                            Name = "Nebraska"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            CountryId = 220,
+                            Name = "Nevada"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            CountryId = 220,
+                            Name = "New Hampshire"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            CountryId = 220,
+                            Name = "New Jersey"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            CountryId = 220,
+                            Name = "New Mexico"
+                        },
+                        new
+                        {
+                            Id = 32,
+                            CountryId = 220,
+                            Name = "New York"
+                        },
+                        new
+                        {
+                            Id = 33,
+                            CountryId = 220,
+                            Name = "North Carolina"
+                        },
+                        new
+                        {
+                            Id = 34,
+                            CountryId = 220,
+                            Name = "North Dakota"
+                        },
+                        new
+                        {
+                            Id = 35,
+                            CountryId = 220,
+                            Name = "Ohio"
+                        },
+                        new
+                        {
+                            Id = 36,
+                            CountryId = 220,
+                            Name = "Oklahoma"
+                        },
+                        new
+                        {
+                            Id = 37,
+                            CountryId = 220,
+                            Name = "Oregon"
+                        },
+                        new
+                        {
+                            Id = 38,
+                            CountryId = 220,
+                            Name = "Pennsylvania"
+                        },
+                        new
+                        {
+                            Id = 39,
+                            CountryId = 220,
+                            Name = "Rhode Island"
+                        },
+                        new
+                        {
+                            Id = 40,
+                            CountryId = 220,
+                            Name = "South Carolina"
+                        },
+                        new
+                        {
+                            Id = 41,
+                            CountryId = 220,
+                            Name = "South Dakota"
+                        },
+                        new
+                        {
+                            Id = 42,
+                            CountryId = 220,
+                            Name = "Tennessee"
+                        },
+                        new
+                        {
+                            Id = 43,
+                            CountryId = 220,
+                            Name = "Texas"
+                        },
+                        new
+                        {
+                            Id = 44,
+                            CountryId = 220,
+                            Name = "Utah"
+                        },
+                        new
+                        {
+                            Id = 45,
+                            CountryId = 220,
+                            Name = "Vermont"
+                        },
+                        new
+                        {
+                            Id = 46,
+                            CountryId = 220,
+                            Name = "Virginia"
+                        },
+                        new
+                        {
+                            Id = 47,
+                            CountryId = 220,
+                            Name = "Washington"
+                        },
+                        new
+                        {
+                            Id = 48,
+                            CountryId = 220,
+                            Name = "West Virginia"
+                        },
+                        new
+                        {
+                            Id = 49,
+                            CountryId = 220,
+                            Name = "Wisconsin"
+                        },
+                        new
+                        {
+                            Id = 50,
+                            CountryId = 220,
+                            Name = "Wyoming"
+                        },
+                        new
+                        {
+                            Id = 51,
+                            CountryId = 220,
+                            Name = "District of Columbia"
+                        });
                 });
 
             modelBuilder.Entity("Entities.Users.User", b =>
@@ -1515,6 +1823,33 @@ namespace CloudShield.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CloudShield.Entities.Entity_Address.Address", b =>
+                {
+                    b.HasOne("Entities.Users.Country", "Country")
+                        .WithOne("Address")
+                        .HasForeignKey("CloudShield.Entities.Entity_Address.Address", "CountryId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Entities.Users.State", "State")
+                        .WithOne("Address")
+                        .HasForeignKey("CloudShield.Entities.Entity_Address.Address", "StateId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Entities.Users.User", "User")
+                        .WithOne("Address")
+                        .HasForeignKey("CloudShield.Entities.Entity_Address.Address", "UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Country");
+
+                    b.Navigation("State");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Role.RolePermissions", b =>
                 {
                     b.HasOne("CloudShield.Entities.Role.Permissions", "Permissions")
@@ -1538,33 +1873,6 @@ namespace CloudShield.Migrations
                     b.Navigation("Permissions");
 
                     b.Navigation("Role");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CloudShield.Entities.Users.Address", b =>
-                {
-                    b.HasOne("Entities.Users.Country", "Country")
-                        .WithOne("Address")
-                        .HasForeignKey("CloudShield.Entities.Users.Address", "CountryId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Entities.Users.State", "State")
-                        .WithOne("Address")
-                        .HasForeignKey("CloudShield.Entities.Users.Address", "StateId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Entities.Users.User", "User")
-                        .WithOne("Address")
-                        .HasForeignKey("CloudShield.Entities.Users.Address", "UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Country");
-
-                    b.Navigation("State");
 
                     b.Navigation("User");
                 });

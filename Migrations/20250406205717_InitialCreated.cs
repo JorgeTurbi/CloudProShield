@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CloudShield.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreated : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -69,6 +69,7 @@ namespace CloudShield.Migrations
                     Dob = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Password = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Phone = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     Confirm = table.Column<bool>(type: "bit", nullable: false),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -95,32 +96,6 @@ namespace CloudShield.Migrations
                         name: "FK_State_Country_CountryId",
                         column: x => x.CountryId,
                         principalTable: "Country",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Address",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    CountryId = table.Column<int>(type: "int", nullable: false),
-                    StateId = table.Column<int>(type: "int", nullable: false),
-                    City = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Street = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Line = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ZipCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Address", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Address_User_UserId",
-                        column: x => x.UserId,
-                        principalTable: "User",
                         principalColumn: "Id");
                 });
 
@@ -179,6 +154,42 @@ namespace CloudShield.Migrations
                     table.PrimaryKey("PK_Sessions", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Sessions_User_UserId",
+                        column: x => x.UserId,
+                        principalTable: "User",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Address",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    CountryId = table.Column<int>(type: "int", nullable: false),
+                    StateId = table.Column<int>(type: "int", nullable: false),
+                    City = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Street = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Line = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ZipCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Address", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Address_Country_CountryId",
+                        column: x => x.CountryId,
+                        principalTable: "Country",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Address_State_StateId",
+                        column: x => x.StateId,
+                        principalTable: "State",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Address_User_UserId",
                         column: x => x.UserId,
                         principalTable: "User",
                         principalColumn: "Id");
@@ -446,8 +457,78 @@ namespace CloudShield.Migrations
 
             migrationBuilder.InsertData(
                 table: "User",
-                columns: new[] { "Id", "Confirm", "CreateAt", "Dob", "Email", "IsActive", "Name", "Password", "SurName", "UpdateAt" },
-                values: new object[] { 1, true, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "jturbi@syschar.com", true, "Admin", "Lavacaloca@123", null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) });
+                columns: new[] { "Id", "Confirm", "CreateAt", "Dob", "Email", "IsActive", "Name", "Password", "Phone", "SurName", "UpdateAt" },
+                values: new object[] { 1, true, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "jturbi@syschar.com", true, "Admin", "Lavacaloca@123", "8294627091", null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) });
+
+            migrationBuilder.InsertData(
+                table: "State",
+                columns: new[] { "Id", "CountryId", "Name" },
+                values: new object[,]
+                {
+                    { 1, 220, "Alabama" },
+                    { 2, 220, "Alaska" },
+                    { 3, 220, "Arizona" },
+                    { 4, 220, "Arkansas" },
+                    { 5, 220, "California" },
+                    { 6, 220, "Colorado" },
+                    { 7, 220, "Connecticut" },
+                    { 8, 220, "Delaware" },
+                    { 9, 220, "Florida" },
+                    { 10, 220, "Georgia" },
+                    { 11, 220, "Hawaii" },
+                    { 12, 220, "Idaho" },
+                    { 13, 220, "Illinois" },
+                    { 14, 220, "Indiana" },
+                    { 15, 220, "Iowa" },
+                    { 16, 220, "Kansas" },
+                    { 17, 220, "Kentucky" },
+                    { 18, 220, "Louisiana" },
+                    { 19, 220, "Maine" },
+                    { 20, 220, "Maryland" },
+                    { 21, 220, "Massachusetts" },
+                    { 22, 220, "Michigan" },
+                    { 23, 220, "Minnesota" },
+                    { 24, 220, "Mississippi" },
+                    { 25, 220, "Missouri" },
+                    { 26, 220, "Montana" },
+                    { 27, 220, "Nebraska" },
+                    { 28, 220, "Nevada" },
+                    { 29, 220, "New Hampshire" },
+                    { 30, 220, "New Jersey" },
+                    { 31, 220, "New Mexico" },
+                    { 32, 220, "New York" },
+                    { 33, 220, "North Carolina" },
+                    { 34, 220, "North Dakota" },
+                    { 35, 220, "Ohio" },
+                    { 36, 220, "Oklahoma" },
+                    { 37, 220, "Oregon" },
+                    { 38, 220, "Pennsylvania" },
+                    { 39, 220, "Rhode Island" },
+                    { 40, 220, "South Carolina" },
+                    { 41, 220, "South Dakota" },
+                    { 42, 220, "Tennessee" },
+                    { 43, 220, "Texas" },
+                    { 44, 220, "Utah" },
+                    { 45, 220, "Vermont" },
+                    { 46, 220, "Virginia" },
+                    { 47, 220, "Washington" },
+                    { 48, 220, "West Virginia" },
+                    { 49, 220, "Wisconsin" },
+                    { 50, 220, "Wyoming" },
+                    { 51, 220, "District of Columbia" }
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Address_CountryId",
+                table: "Address",
+                column: "CountryId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Address_StateId",
+                table: "Address",
+                column: "StateId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Address_UserId",

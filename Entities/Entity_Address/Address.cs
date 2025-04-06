@@ -1,7 +1,7 @@
 using CloudShield.Commons;
 using Entities.Users;
 
-namespace CloudShield.Entities.Users;
+namespace CloudShield.Entities.Entity_Address;
 
 public class Address : BaseAbstract
 {

@@ -1,7 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Net.Http.Headers;
-using CloudShield.Entities.Users;
+using CloudShield.Entities.Entity_Address;
+
+
 
 namespace Entities.Users;
 

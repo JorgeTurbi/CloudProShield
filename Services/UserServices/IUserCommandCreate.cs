@@ -1,5 +1,5 @@
 using Commons;
-using DTOs;
+using DTOs.UsersDTOs;
 
 namespace Services.UserServices;
 
