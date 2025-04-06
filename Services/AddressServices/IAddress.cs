@@ -13,5 +13,6 @@ namespace Services.AddressServices
         Task<ApiResponse<bool>> Delete(int id, CancellationToken cancellationToken = default);
         Task<ApiResponse<AddressDTOS>> GetById(int id, CancellationToken cancellationToken = default);
         Task<ApiResponse<List<AddressDTObyUser>>> GetAll(CancellationToken cancellationToken = default);
+        Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(int UserId, CancellationToken cancellationToken = default);
     }
 }

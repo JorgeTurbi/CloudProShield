@@ -59,8 +59,7 @@ namespace CloudShield.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CountryId")
-                        .IsUnique();
+                    b.HasIndex("CountryId");
 
                     b.HasIndex("StateId")
                         .IsUnique();
@@ -1826,8 +1825,8 @@ namespace CloudShield.Migrations
             modelBuilder.Entity("CloudShield.Entities.Entity_Address.Address", b =>
                 {
                     b.HasOne("Entities.Users.Country", "Country")
-                        .WithOne("Address")
-                        .HasForeignKey("CloudShield.Entities.Entity_Address.Address", "CountryId")
+                        .WithMany("Address")
+                        .HasForeignKey("CountryId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 

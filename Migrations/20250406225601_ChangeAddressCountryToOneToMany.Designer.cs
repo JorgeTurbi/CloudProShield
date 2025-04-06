@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250406205717_InitialCreated")]
-    partial class InitialCreated
+    [Migration("20250406225601_ChangeAddressCountryToOneToMany")]
+    partial class ChangeAddressCountryToOneToMany
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -62,8 +62,7 @@ namespace CloudShield.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CountryId")
-                        .IsUnique();
+                    b.HasIndex("CountryId");
 
                     b.HasIndex("StateId")
                         .IsUnique();
@@ -1829,8 +1828,8 @@ namespace CloudShield.Migrations
             modelBuilder.Entity("CloudShield.Entities.Entity_Address.Address", b =>
                 {
                     b.HasOne("Entities.Users.Country", "Country")
-                        .WithOne("Address")
-                        .HasForeignKey("CloudShield.Entities.Entity_Address.Address", "CountryId")
+                        .WithMany("Address")
+                        .HasForeignKey("CountryId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 

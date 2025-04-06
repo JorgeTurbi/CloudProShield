@@ -1,6 +1,7 @@
 using AutoMapper;
 using CloudShield.Entities.Entity_Address;
 using Commons;
+using Commons.Hash;
 using Commons.Utils;
 using DataContext;
 using DTOs.Address_DTOS;
@@ -51,15 +52,24 @@ public class UserLib : IUserCommandCreate, ISaveServices
     }
 
     //todo mapping before save in database
-
+        userDTO.Password= PasswordHasher.HashPassword(userDTO.Password);
     var Selected = _mapper.Map<User>(userDTO);
 
     await _context.User.AddAsync(Selected);
-    bool result = await Save();
-    _log.LogInformation("Se registro el usuario exitosamente {Email}", userDTO.Email);
-  
-
-    var SelectedAddress = _mapper.Map<AddressDTOS>(userDTO);
+    bool result = await Save(cancellationToken);
+        var SelectedAddress = _mapper.Map<AddressDTOS>(userDTO);
+    SelectedAddress.UserId = Selected.Id; 
+    if (result == true)
+    {
+      _log.LogInformation("User Registered {Email}", userDTO.Email);
+    }
+    else
+    {
+      _log.LogError("User cannot Register {Email}", userDTO.Email);
+      
+    }
+   
+       
 
     ApiResponse<bool> ResponseAddress = await _addressLib.AddNew(SelectedAddress, cancellationToken);
     if (ResponseAddress == null || ResponseAddress.Data == false)
@@ -86,13 +96,13 @@ public class UserLib : IUserCommandCreate, ISaveServices
     bool result =await _context.SaveChangesAsync(cancellationToken) > 0 ? true : false;
     if (result)
     {
-        _log.LogError("User Registered {Email}", _context.User.LastOrDefault().Email);
-      return true;
+       
+      return result;
     }
     else
     {
-        _log.LogError("User cannot Register {Email}", _context.User.LastOrDefault().Email);
-      return false;
+        
+      return result;
     }
    
     }

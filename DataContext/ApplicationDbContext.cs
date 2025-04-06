@@ -59,11 +59,11 @@ public class ApplicationDbContext : DbContext
         .OnDelete(DeleteBehavior.NoAction);
 
          //todo Address to Country
-        model.Entity<Address>()
-        .HasOne(u => u.Country)
-        .WithOne(a => a.Address)
-        .HasForeignKey<Address>(a => a.CountryId)
-        .OnDelete(DeleteBehavior.NoAction);
+       model.Entity<Address>()
+    .HasOne(a => a.Country)
+    .WithMany(c => c.Address)
+    .HasForeignKey(a => a.CountryId)
+    .OnDelete(DeleteBehavior.NoAction);
 
             //todo Address to To State
         model.Entity<Address>()

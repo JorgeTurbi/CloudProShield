@@ -246,5 +246,47 @@ public class AddressLib : IAddress
         throw new NotImplementedException();
     }
 
-    
+
+
+    public async  Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(int UserId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+
+            AddressDTObyUser address = await (from a in _context.Address
+                                  join u in _context.User on a.UserId equals u.Id
+                                  join c in _context.Country on a.CountryId equals c.Id
+                                  join s in _context.State on a.StateId equals s.Id
+                                  where a.UserId == UserId
+                                  select new AddressDTObyUser
+                                  {
+                                      User = u.Email,
+                                      Country = c.Name,
+                                      State = s.Name,
+                                      City = a.City,
+                                      Street = a.Street,
+                                      Line = a.Line,
+                                      ZipCode = a.ZipCode
+                                  }).FirstOrDefaultAsync(cancellationToken);
+            if (address == null)
+            {
+                _log.LogError("Address not found for user with ID {UserId}.", UserId);
+                return new ApiResponse<AddressDTObyUser>(false, "Address not found.", null);
+            }
+
+            _log.LogInformation("Address retrieved successfully for user with ID {UserId}.", UserId);
+            return new ApiResponse<AddressDTObyUser>(true, "Address retrieved successfully.", address);
+
+        }
+        catch (Exception ex)
+        {
+            
+            // Log the exception or handle it as needed
+            _log.LogError("An error occurred while retrieving address for user with ID {UserId}: {ex.Message}", UserId, ex);
+            return new ApiResponse<AddressDTObyUser>(false, ex.Message, null);
+           
+        }
+    }
+
+
 }

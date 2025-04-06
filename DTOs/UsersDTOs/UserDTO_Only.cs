@@ -16,7 +16,6 @@ public class UserDTO_Only
     public required string Name { get; set; }
     public required string SurName { get; set; }
     public DateTime Dob { get; set; }
-    public required string Email { get; set; }
-    public required string Password { get; set; }
+    public required string Email { get; set; }  
     public required string Phone { get; set; }  
 }

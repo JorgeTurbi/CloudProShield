@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CloudShield.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreated : Migration
+    public partial class ChangeAddressCountryToOneToMany : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -521,8 +521,7 @@ namespace CloudShield.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Address_CountryId",
                 table: "Address",
-                column: "CountryId",
-                unique: true);
+                column: "CountryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Address_StateId",
