@@ -184,5 +184,56 @@ model.Entity<Address>()
     .OnDelete(DeleteBehavior.NoAction);
 ```
 
+## 🔧 Configuración de JWT sin ASP.NET Core Identity
+
+- Se instaló el paquete:
+  - `Microsoft.AspNetCore.Authentication.JwtBearer`
+
+- Se configuró autenticación JWT en `Program.cs`:
+  - `builder.Services.AddAuthentication(...)`
+  - `options.TokenValidationParameters` definidos con clave secreta segura
+
+- Se generó una clave segura para firmar los tokens:
+  - `p5X9z@L#d2Q8vR1t$M7kE3wY!Z0uNbC6`
+
+- Se creó clase `JwtService.cs`:
+  - Método `GenerateToken(userId, email, rememberMe)` implementado
+  - Ajuste del tiempo de expiración según el `rememberMe`
+
+## 🧪 Endpoint de Login (`AuthController`)
+
+- Se creó endpoint POST `/api/auth/login`:
+  - Verifica credenciales simuladas
+  - Usa `JwtService` para generar token
+  - Devuelve token al frontend
+  - Usa `LoginDto` con `Email`, `Password`, `RememberMe`
+
+## ⚠️ Error resuelto: Servicio no construible (`UserRead`)
+
+- Problema detectado:
+  - Error: `Unable to resolve service for type 'System.String'`
+  - Causa: constructor de `UserRead` requería `string`, que no es resolvible por DI
+
+- Soluciones propuestas:
+  1. Inyectar `IConfiguration` para obtener `ConnectionString`
+  2. Registrar manualmente con un factory usando `provider.GetRequiredService<IConfiguration>()`
+  3. Alternativa: eliminar la dependencia directa de `string` y usar servicios registrados
+
+## 🌐 Error de CORS resuelto
+
+- Configurada política `AllowFrontend` en `Program.cs`:
+  ```csharp
+  builder.Services.AddCors(options =>
+  {
+      options.AddPolicy("AllowFrontend", policy =>
+      {
+          policy.WithOrigins("http://localhost:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+      });
+  });
+
+  app.UseCors("AllowFrontend");
+
 ---
 

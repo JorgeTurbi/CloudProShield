@@ -1,3 +1,4 @@
+using CloudShield.DTOs.UsersDTOs;
 using Commons;
 using DTOs.Address_DTOS;
 using DTOs.UsersDTOs;
@@ -62,5 +63,16 @@ namespace CloudShield.Controllers
 
                 return Ok(result);
             }
+
+            [HttpPost("Login")]
+            public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
+            {
+                  if(userLoginDTO==null) return BadRequest("Invalid login request");
+              
+               ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO);
+                return Ok(result);
+            }
+           
+       
     }
 }

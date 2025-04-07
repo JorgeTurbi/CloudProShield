@@ -1,6 +1,10 @@
+using System.Text;
 using CloudShield.Repositories.Users;
+using Commons.Utils;
 using DataContext;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Repositories.Address_Repository;
 using Repositories.Users;
 using Scalar.AspNetCore;
@@ -12,6 +16,47 @@ using Services.UserServices;
 var builder = WebApplication.CreateBuilder(args);
 
 
+//todo add cors policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+});
+
+
+
+   var jwtSettin = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{   
+ 
+
+   var key = Encoding.UTF8.GetBytes(jwtSettin.SecretKey);
+
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero // sin tolerancia de expiración
+    };
+});
+
+builder.Services.AddAuthorization();
 //todo services configuration
     builder.Services.AddScoped<IUserCommandCreate,UserLib>();
 builder.Services.AddScoped<IAddress,AddressLib>();
@@ -78,8 +123,9 @@ if (app.Environment.IsDevelopment())
    });
    app.MapScalarApiReference();
 }
+app.UseCors("AllowAllOrigins");
 app.UseHttpsRedirection();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
