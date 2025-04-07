@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CloudShield.Migrations
 {
     /// <inheritdoc />
-    public partial class ChangeAddressCountryToOneToMany : Migration
+    public partial class InitialCreated : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

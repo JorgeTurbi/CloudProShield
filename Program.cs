@@ -123,6 +123,17 @@ if (app.Environment.IsDevelopment())
    });
    app.MapScalarApiReference();
 }
+ app.MapOpenApi();
+   app.UseSwaggerUI(o=>{
+    o.SwaggerEndpoint("/openapi/v1.json", "Services TaxCloud V1" );
+   } );
+
+   app.UseReDoc(option=>{
+    option.SpecUrl("/openapi/v1.json");
+   });
+   app.MapScalarApiReference();
+
+
 app.UseCors("AllowAllOrigins");
 app.UseHttpsRedirection();
 app.UseAuthentication();
