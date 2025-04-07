@@ -1,6 +1,6 @@
 
 using AutoMapper;
-using DTOs;
+using DTOs.UsersDTOs;
 using Entities.Users;
 
 namespace CloudShield.Profiles;

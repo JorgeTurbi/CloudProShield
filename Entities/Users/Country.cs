@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using CloudShield.Entities.Users;
+using CloudShield.Entities.Entity_Address;
+
 
 namespace Entities.Users;
 
@@ -12,6 +13,6 @@ public int Id { get; set; }
 public string Name { get; set; }
 
 public virtual ICollection<State> State {get;set;}
-public virtual Address Address { get; set; }
+ public ICollection<Address> Address { get; set; }
 
 }

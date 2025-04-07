@@ -1,5 +1,6 @@
 using AutoMapper;
-using DTOs;
+using DTOs.Address_DTOS;
+using DTOs.UsersDTOs;
 
 namespace Profiles;
 

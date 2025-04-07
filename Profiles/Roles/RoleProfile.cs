@@ -1,5 +1,6 @@
 using AutoMapper;
 using CloudShield.Entities.Role;
+using DTOs.Roles;
 
 namespace Roles;
 

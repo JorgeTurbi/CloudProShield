@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Roles;
+namespace DTOs.Roles;
 
 public class RolesDTO
 

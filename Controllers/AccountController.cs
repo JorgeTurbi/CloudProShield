@@ -1,45 +1,78 @@
+using CloudShield.DTOs.UsersDTOs;
 using Commons;
-using DTOs;
-
+using DTOs.Address_DTOS;
+using DTOs.UsersDTOs;
 using Microsoft.AspNetCore.Mvc;
+using Services.AddressServices;
 using Services.UserServices;
 
 namespace CloudShield.Controllers
 {
-  [ApiController]
-  [Route("api/[controller]")]
-  public class AccountController : ControllerBase
-  {
-    private readonly IUserCommandCreate _user;
-    private readonly IUserCommandsUpdate _userUpdate;
-
-    public AccountController(IUserCommandCreate user, IUserCommandsUpdate userUpdate)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AccountController : ControllerBase
     {
-      _user = user;
-      _userUpdate = userUpdate;
+        private readonly  IUserCommandCreate _user;
+        private readonly IUserCommandRead _userRead;
+        private readonly IAddress _address;
+      
+
+        public AccountController(IUserCommandCreate user , IUserCommandRead userRead , IAddress address)
+        {
+           
+            _user = user;
+            _userRead = userRead;
+            _address = address;
+        }
+     
+     
+          [HttpPost("Add")]  
+          public async Task<IActionResult> Add([FromBody] UserDTO user)
+          {
+                    ApiResponse<bool> result = await _user.AddNew(user);
+
+                    if(result.Success==false) return BadRequest(new {result});
+
+                    return Created($"api/users/{user.Id}",result);
+          }
+
+            [HttpGet("GetAll")]
+            public async Task<IActionResult> GetAll()
+            {
+                ApiResponse<List<UserDTO_Only>> result = await _userRead.GetAllUsers();
+                if(result.Success==false) return BadRequest(new {result});
+
+                return Ok(result);
+            }
+
+            [HttpGet("GetByUserId/{id}")]
+            public async Task<IActionResult> GetById(int id)
+            {
+                ApiResponse<AddressDTObyUser> result = await _address.GetAddressbyUserId(id);
+                if(result.Success==false) return BadRequest(new {result});
+
+                return Ok(result);
+            }
+
+
+            [HttpGet("GetByEmail/{email}")]
+            public async Task<IActionResult> GetByEmail(string email)
+            {
+                ApiResponse<UserDTO_Only> result = await _userRead.GetUserByEmail(email);
+                if(result.Success==false) return BadRequest(new {result});
+
+                return Ok(result);
+            }
+
+            [HttpPost("Login")]
+            public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
+            {
+                  if(userLoginDTO==null) return BadRequest("Invalid login request");
+              
+               ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO);
+                return Ok(result);
+            }
+           
+       
     }
-
-    [HttpPost("Add")]
-    public async Task<IActionResult> Add([FromBody] UserDTO user)
-    {
-      ApiResponse<bool> result = await _user.AddNew(user);
-
-      if (result.Success == false) return BadRequest(new { result });
-
-      return Created($"api/users/{user.Id}", result);
-    }
-
-    [HttpPut("Update")]
-    public async Task<IActionResult> Update([FromBody] UserDTO userDto)
-    {
-      var result = await _userUpdate.Update(userDto);
-
-      if(!result.Success)
-      {
-        return BadRequest(new {result});
-      }
-
-      return Ok(new { result });
-    }
-  }
 }
