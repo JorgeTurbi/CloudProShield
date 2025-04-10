@@ -1,6 +1,5 @@
 using Commons;
 
-
 namespace Services.Roles;
 
 public interface IDeleteCommandRole

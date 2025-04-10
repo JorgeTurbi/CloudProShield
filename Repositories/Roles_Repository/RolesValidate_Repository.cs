@@ -1,5 +1,4 @@
 using AutoMapper;
-using Commons;
 using DataContext;
 using Microsoft.EntityFrameworkCore;
 using Services.Roles;
@@ -8,7 +7,7 @@ namespace Reponsitories.Roles_Repository;
 
 public class RolesValidate_Repository : IValidateRoles
 {
-        private readonly ApplicationDbContext _context;
+    private readonly ApplicationDbContext _context;
 
     private readonly ILogger<RolesValidate_Repository> _log;
     private readonly IMapper _mapper;
@@ -20,19 +19,19 @@ public class RolesValidate_Repository : IValidateRoles
     }
 
 
-    public async  Task<bool> Exists(string nameRole)
+    public async Task<bool> Exists(string nameRole)
     {
-            try
-            {
-                string searchRole = nameRole.ToLower();
-              return await _context.Role.AsNoTracking().Where(a=>a.Name==searchRole).FirstOrDefaultAsync()!=null;  
-                
-                
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(ex,"Were an error on validate exists Validate Role");
-               throw;
-            }
+        try
+        {
+            string searchRole = nameRole.ToLower();
+            return await _context.Role.AsNoTracking().Where(a => a.Name == searchRole).FirstOrDefaultAsync() != null;
+
+
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Were an error on validate exists Validate Role");
+            throw;
+        }
     }
 }

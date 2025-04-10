@@ -5,9 +5,12 @@ using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Reponsitories.PermissionsValidate_Repository;
 using Reponsitories.Roles_Repository;
 using Repositories.Address_Repository;
 using Repositories.Permissions_Repository;
+using Repositories.PermissionsDelete_Repository;
+using Repositories.PermissionsUpdate_Repository;
 using Repositories.Roles_Repository;
 using Repositories.RoleUpdate_Repository;
 using Repositories.Users;
@@ -32,8 +35,6 @@ builder.Services.AddCors(options =>
         });
 });
 
-
-
 var jwtSettin = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
 
@@ -44,7 +45,6 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-
 
     var key = Encoding.UTF8.GetBytes(jwtSettin.SecretKey);
 
@@ -71,7 +71,11 @@ builder.Services.AddScoped<ICreateCommandRoles, RolesLib>();
 builder.Services.AddScoped<IReadCommandRoles, RolesRead_Repository>();
 builder.Services.AddScoped<IUpdateCommandRoles, RoleUpdate_Repository>();
 builder.Services.AddScoped<IDeleteCommandRole, RolesDelete_Repository>();
+builder.Services.AddScoped<IValidatePermissions, PermissionsValidate_Repository>();
 builder.Services.AddScoped<IReadCommandPermissions, PermissionsRead_Repository>();
+builder.Services.AddScoped<ICreateCommandPermissions, PermissionsLib>();
+builder.Services.AddScoped<IUpdateCommandPermissions, PermissionsUpdate_Repository>();
+builder.Services.AddScoped<IDeleteCommandPermissions, PermissionsDelete_Repository>();
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
@@ -87,7 +91,6 @@ builder.Services.AddOpenApi();
 
 // // path to the log folder
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
-
 
 // // create log folder if it does not exists
 if (!Directory.Exists(logFolderPath))
@@ -108,7 +111,6 @@ Log.Logger = new LoggerConfiguration()
 
 // Use Serilog
 // builder.Host.UseSerilog();
-
 
 var app = builder.Build();
 
