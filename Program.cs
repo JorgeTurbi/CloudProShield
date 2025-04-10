@@ -5,11 +5,14 @@ using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Reponsitories.Roles_Repository;
 using Repositories.Address_Repository;
+using Repositories.Roles_Repository;
 using Repositories.Users;
 using Scalar.AspNetCore;
 using Serilog;
 using Services.AddressServices;
+using Services.Roles;
 using Services.UserServices;
 
 
@@ -58,19 +61,15 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 //todo services configuration
-    builder.Services.AddScoped<IUserCommandCreate,UserLib>();
+builder.Services.AddScoped<IUserCommandCreate,UserLib>();
 builder.Services.AddScoped<IAddress,AddressLib>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
+builder.Services.AddScoped<IValidateRoles, RolesValidate_Repository>();
+builder.Services.AddScoped<ICreateCommandRoles, RolesLib>();
+builder.Services.AddScoped<IReadCommandRoles, RolesRead_Repository>();
 
 
-
-
-
-
-
-
-builder.Services.AddControllers();
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
 // Add services to the container.
@@ -99,7 +98,7 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File(
-        Path.Combine(logFolderPath, "logApplication-.txt"),
+        Path.Combine(logFolderPath, "LogsApplication-.txt"),
         rollingInterval: RollingInterval.Day
     )
     .CreateLogger();
@@ -123,15 +122,15 @@ if (app.Environment.IsDevelopment())
    });
    app.MapScalarApiReference();
 }
- app.MapOpenApi();
-   app.UseSwaggerUI(o=>{
-    o.SwaggerEndpoint("/openapi/v1.json", "Services TaxCloud V1" );
-   } );
+//  app.MapOpenApi();
+//    app.UseSwaggerUI(o=>{
+//     o.SwaggerEndpoint("/openapi/v1.json", "Services TaxCloud V1" );
+//    } );
 
-   app.UseReDoc(option=>{
-    option.SpecUrl("/openapi/v1.json");
-   });
-   app.MapScalarApiReference();
+//    app.UseReDoc(option=>{
+//     option.SpecUrl("/openapi/v1.json");
+//    });
+//    app.MapScalarApiReference();
 
 
 app.UseCors("AllowAllOrigins");
