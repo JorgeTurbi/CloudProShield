@@ -65,7 +65,7 @@ namespace CloudProShield.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("DeleteRole/{permissionId:int}")]
+        [HttpDelete("DeleteRole")]
         public async Task<IActionResult> DeletePermission(int permissionId)   
         {
             var result = await _deletePermission.Delete(permissionId);

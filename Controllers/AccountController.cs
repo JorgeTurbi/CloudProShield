@@ -121,7 +121,7 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpGet("GetRoleByUserId/{userId:int}")]
+        [HttpGet("GetRoleByUserId")]
         public async Task<IActionResult> GetRoleByUserId(int userId)
         {
             var result = await _readRole.GetByUserId(userId);
@@ -134,7 +134,7 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpDelete("DeleteRole/{roleId:int}")]
+        [HttpDelete("DeleteRole")]
         public async Task<IActionResult> DeleteRole(int roleId)
         {
             var result = await _deleteRole.Delete(roleId);
