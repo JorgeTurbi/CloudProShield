@@ -6,7 +6,6 @@ namespace DTOs.Roles;
 public class RolesDTO
 
 {
-
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Key]
     public int Id { get; set; }

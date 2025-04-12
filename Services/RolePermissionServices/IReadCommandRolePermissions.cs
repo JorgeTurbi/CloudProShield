@@ -1,4 +1,5 @@
 using CloudShield.DTOs.Permissions;
+using DTOs.UserRolesPermissions;
 using Commons;
 
 namespace Services.RolePermissions
@@ -7,7 +8,6 @@ namespace Services.RolePermissions
     {
         Task<ApiResponse<RolesPermissionsDTO>> GetById(int id);
         Task<ApiResponse<List<RolesPermissionsDTO>>> GetAll();
-        Task<ApiResponse<List<RolesPermissionsDTO>>> GetByRoleId(int roleId);
-        Task<ApiResponse<List<RolesPermissionsDTO>>> GetByPermissionId(int permissionId);
+        Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(int userId);
     }
 }

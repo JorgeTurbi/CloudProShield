@@ -5,6 +5,6 @@ namespace Services.RolePermissions
 {
     public interface ICreateCommandRolePermissions
     {
-        Task<ApiResponse<bool>> Create(RolesPermissionsDTO rolePermission);
+        Task<ApiResponse<bool>> Create(RolesPermissionsDTO rolePermissionDTO);
     }
 }

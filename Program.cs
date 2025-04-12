@@ -11,6 +11,7 @@ using Repositories.Address_Repository;
 using Repositories.Permissions_Repository;
 using Repositories.PermissionsDelete_Repository;
 using Repositories.PermissionsUpdate_Repository;
+using Repositories.RolePermissions_Repository;
 using Repositories.Roles_Repository;
 using Repositories.RoleUpdate_Repository;
 using Repositories.Users;
@@ -19,6 +20,7 @@ using Serilog;
 using Services.AddressServices;
 using Services.EmailServices;
 using Services.Permissions;
+using Services.RolePermissions;
 using Services.Roles;
 using Services.UserServices;
 
@@ -80,6 +82,10 @@ builder.Services.AddScoped<IReadCommandPermissions, PermissionsRead_Repository>(
 builder.Services.AddScoped<ICreateCommandPermissions, PermissionsLib>();
 builder.Services.AddScoped<IUpdateCommandPermissions, PermissionsUpdate_Repository>();
 builder.Services.AddScoped<IDeleteCommandPermissions, PermissionsDelete_Repository>();
+builder.Services.AddScoped<IReadCommandRolePermissions, RolePermissionsRead_Repository>();
+builder.Services.AddScoped<IUpdateCommandRolePermissions, RolePermissionsUpdate_Repository>();
+builder.Services.AddScoped<ICreateCommandRolePermissions, RolePermissionsLib>();
+builder.Services.AddScoped<IDeleteCommandRolePermissions, RolePermissionsDelete_Repository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddControllers();
