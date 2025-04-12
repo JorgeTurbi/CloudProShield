@@ -87,6 +87,8 @@ builder.Services.AddScoped<IUpdateCommandRolePermissions, RolePermissionsUpdate_
 builder.Services.AddScoped<ICreateCommandRolePermissions, RolePermissionsLib>();
 builder.Services.AddScoped<IDeleteCommandRolePermissions, RolePermissionsDelete_Repository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<UserPassword_Repository>();
+builder.Services.AddScoped<IUserForgotPassword, UserForgotPassword_Repository>();
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));

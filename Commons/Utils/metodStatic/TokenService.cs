@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using DTOs.UsersDTOs;
 using Services.UserServices;
@@ -39,5 +38,19 @@ public class TokenService : ITokenService
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    public static string IssueResetToken(string email, IConfiguration cfg, TimeSpan life)
+    {
+        var key = Encoding.UTF8.GetBytes(cfg["JwtSettings:SecretKey"]);
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.CreateToken(new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[] { new Claim(ClaimTypes.Email, email) }),
+            Expires = DateTime.UtcNow.Add(life),
+            SigningCredentials = new(
+                new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+        });
+        return handler.WriteToken(token);
     }
 }
