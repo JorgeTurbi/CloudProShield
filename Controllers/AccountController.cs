@@ -107,10 +107,6 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-
-
-
-
         [HttpDelete("DeleteUser")]
         public async Task<IActionResult> DeleteUser(int userId)
         {
@@ -123,8 +119,6 @@ namespace CloudShield.Controllers
 
             return Ok(result);
         }
-
-
 
         [HttpPost("CreateRole")]
         public async Task<ActionResult<ApiResponse<string>>> CreateRole([FromBody] RolesDTO role)
