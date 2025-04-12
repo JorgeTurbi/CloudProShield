@@ -16,16 +16,20 @@ namespace CloudShield.Controllers
     {
         private readonly IUserCommandCreate _user;
         private readonly IUserCommandRead _userRead;
+        private readonly IUserCommandsUpdate _userUpdate;
         private readonly IAddress _address;
         private readonly ICreateCommandRoles _createRole;
         private readonly IReadCommandRoles _readRole;
         private readonly IUpdateCommandRoles _updateRole;
         private readonly IDeleteCommandRole _deleteRole;
+        private readonly IUserCommandDelete _deleteUser;
 
-        public AccountController(IUserCommandCreate user, IUserCommandRead userRead, IAddress address, IReadCommandRoles readRole, ICreateCommandRoles createRole, IUpdateCommandRoles updateRole, IDeleteCommandRole deleteRole)
+        public AccountController(IUserCommandCreate user, IUserCommandRead userRead, IAddress address, IReadCommandRoles readRole, ICreateCommandRoles createRole, IUpdateCommandRoles updateRole, IDeleteCommandRole deleteRole, IUserCommandsUpdate userUpdate, IUserCommandDelete deleteUser)
         {
             _user = user;
             _userRead = userRead;
+            _userUpdate = userUpdate;
+            _deleteUser = deleteUser;
             _address = address;
             _readRole = readRole;
             _createRole = createRole;
@@ -50,6 +54,16 @@ namespace CloudShield.Controllers
             if (result.Success == false) return BadRequest(new { result });
 
             return Ok(result);
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
+        {
+            var response = await _user.ConfirmEmailAsync(token);
+            if (!response.Success)
+                return BadRequest(response);
+
+            return Ok(response);
         }
 
         [HttpGet("GetByUserId")]
@@ -78,6 +92,57 @@ namespace CloudShield.Controllers
             ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO);
             return Ok(result);
         }
+
+
+        [HttpPut("UpdateUser")]
+        public async Task<IActionResult> UpdateUser([FromBody] UserDTO_Only user)
+        {
+            var result = await _userUpdate.Update(user);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("EnabledUser")]
+        public async Task<IActionResult> EnableUser([FromBody] int user)
+        {
+            var result = await _userUpdate.EnableUserAsync(user);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+        [HttpPut("DisabledUser")]
+        public async Task<IActionResult> DisabledUser([FromBody] int user)
+        {
+            var result = await _userUpdate.DisableUserAsync(user);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+
+
+
+        [HttpDelete("DeleteUser")]
+        public async Task<IActionResult> DeleteUser(int userId)
+        {
+            var result = await _deleteUser.Delete(userId);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { result });
+            }
+
+            return Ok(result);
+        }
+
+
 
         [HttpPost("CreateRole")]
         public async Task<ActionResult<ApiResponse<string>>> CreateRole([FromBody] RolesDTO role)
@@ -141,7 +206,7 @@ namespace CloudShield.Controllers
 
             if (!result.Success)
             {
-                return BadRequest( new { result });
+                return BadRequest(new { result });
             }
 
             return Ok(result);

@@ -17,6 +17,7 @@ using Repositories.Users;
 using Scalar.AspNetCore;
 using Serilog;
 using Services.AddressServices;
+using Services.EmailServices;
 using Services.Permissions;
 using Services.Roles;
 using Services.UserServices;
@@ -63,6 +64,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 //todo services configuration
 builder.Services.AddScoped<IUserCommandCreate, UserLib>();
+builder.Services.AddScoped<IUserCommandsUpdate, UserUpdate_Repository>();
+builder.Services.AddScoped<IUserCommandDelete, UserDelete_Repository>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAddress, AddressLib>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
@@ -76,6 +80,7 @@ builder.Services.AddScoped<IReadCommandPermissions, PermissionsRead_Repository>(
 builder.Services.AddScoped<ICreateCommandPermissions, PermissionsLib>();
 builder.Services.AddScoped<IUpdateCommandPermissions, PermissionsUpdate_Repository>();
 builder.Services.AddScoped<IDeleteCommandPermissions, PermissionsDelete_Repository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));

@@ -8,7 +8,8 @@ public interface IUserCommandCreate
 {
 
         Task<ApiResponse<bool>> AddNew(UserDTO userDTO,CancellationToken cancellationToken=default);
-     
+        Task<ApiResponse<bool>> ConfirmEmailAsync(string token);
+
       
  
 }
