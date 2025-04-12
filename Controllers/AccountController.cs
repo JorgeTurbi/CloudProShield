@@ -56,16 +56,6 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpGet("confirm-email")]
-        public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
-        {
-            var response = await _user.ConfirmEmailAsync(token);
-            if (!response.Success)
-                return BadRequest(response);
-
-            return Ok(response);
-        }
-
         [HttpGet("GetByUserId")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -75,15 +65,7 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpGet("GetByEmail")]
-        public async Task<IActionResult> GetByEmail(string email)
-        {
-            ApiResponse<UserDTO_Only> result = await _userRead.GetUserByEmail(email);
-            if (result.Success == false) return BadRequest(new { result });
-
-            return Ok(result);
-        }
-
+      
         [HttpPost("Login")]
         public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
         {
