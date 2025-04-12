@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250407022501_InitialCreated")]
-    partial class InitialCreated
+    [Migration("20250412025843_InicialCreacionTablas")]
+    partial class InicialCreacionTablas
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1778,6 +1778,9 @@ namespace CloudShield.Migrations
                     b.Property<bool>("Confirm")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ConfirmToken")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
 
@@ -1814,6 +1817,7 @@ namespace CloudShield.Migrations
                         {
                             Id = 1,
                             Confirm = true,
+                            ConfirmToken = "",
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Dob = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "jturbi@syschar.com",

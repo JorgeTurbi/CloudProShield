@@ -4,6 +4,7 @@ using DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250412025852_CarlosComputer")]
+    partial class CarlosComputer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1775,9 +1778,6 @@ namespace CloudShield.Migrations
                     b.Property<bool>("Confirm")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ConfirmToken")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
 
@@ -1814,7 +1814,6 @@ namespace CloudShield.Migrations
                         {
                             Id = 1,
                             Confirm = true,
-                            ConfirmToken = "",
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Dob = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "jturbi@syschar.com",

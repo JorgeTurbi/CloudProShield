@@ -419,6 +419,7 @@ public class ApplicationDbContext : DbContext
         Phone="8294627091",
         Confirm=true,
         IsActive=true,
+        ConfirmToken=""
         
        });     
        

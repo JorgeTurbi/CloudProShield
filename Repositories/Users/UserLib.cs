@@ -1,5 +1,8 @@
 using AutoMapper;
 using CloudShield.Entities.Entity_Address;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
 using Commons;
 using Commons.Hash;
 using Commons.Utils;
@@ -10,23 +13,29 @@ using Entities.Users;
 using Microsoft.EntityFrameworkCore;
 using Services.AddressServices;
 using Services.UserServices;
+using System.Text;
+using Services.EmailServices;
 
 namespace CloudShield.Repositories.Users;
-public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
+public class UserLib : IUserCommandCreate, ISaveServices
 {
 
   private readonly ApplicationDbContext _context;
   private readonly IMapper _mapper;
   private readonly ILogger<UserLib> _log;
   private readonly IAddress _addressLib;
+  private readonly ITokenService _tokenService;
+  private readonly IEmailService _emailService;
 
   //todo  the user's Contructor
-  public UserLib(ApplicationDbContext context, IMapper mapper, ILogger<UserLib> log, IAddress addressLib)
+  public UserLib(ApplicationDbContext context, IMapper mapper, ILogger<UserLib> log, IAddress addressLib, ITokenService tokenService, IEmailService emailService)
   {
     _context = context;
     _mapper = mapper;
     _log = log;
     _addressLib = addressLib;
+    _tokenService = tokenService;
+    _emailService = emailService;
   }
 
   //todo Create a new User, it response an object type ApiResponse with boolean data
@@ -48,6 +57,7 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
       _log.LogError("Email Exists {Email}", userDTO.Email);
       return new ApiResponse<bool>(false, "User Exists");
     }
+    userDTO.ConfirmToken = _tokenService.GenerateToken(userDTO, false);
 
     //todo mapping before save in database
     userDTO.Password = PasswordHasher.HashPassword(userDTO.Password);
@@ -60,6 +70,7 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
     if (result == true)
     {
       _log.LogInformation("User Registered {Email}", userDTO.Email);
+      await _emailService.SendConfirmationEmailAsync(userDTO.Email, userDTO.ConfirmToken);
     }
     else
     {
@@ -168,4 +179,40 @@ public class UserLib : IUserCommandCreate, IUserCommandsUpdate, ISaveServices
     }
 
   }
+
+
+
+    async Task<ApiResponse<bool>> IUserCommandCreate.ConfirmEmailAsync(string token)
+    {
+       try
+    {
+        var user = await _context.User.FirstOrDefaultAsync(u => u.ConfirmToken == token);
+        if (user == null)
+        {
+            _log.LogWarning("Invalid or expired confirmation token");
+            return new ApiResponse<bool>(false, "Invalid or expired confirmation token");
+        }
+
+        user.Confirm = true;
+        user.IsActive=true;
+        user.ConfirmToken = string.Empty; // Invalidar el token para futuros usos
+
+        _context.User.Update(user);
+        bool result = await Save();
+
+        if (result)
+        {
+            _log.LogInformation("User email confirmed for {Email}", user.Email);
+            return new ApiResponse<bool>(true, "Email confirmed successfully");
+        }
+
+        return new ApiResponse<bool>(false, "Failed to confirm email");
+    }
+    catch (Exception ex)
+    {
+        _log.LogError(ex, "Error while confirming email");
+        return new ApiResponse<bool>(false, "Error while confirming email");
+    }
+      
+    }
 }
