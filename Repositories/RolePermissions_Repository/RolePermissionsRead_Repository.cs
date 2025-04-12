@@ -3,6 +3,7 @@ using CloudShield.DTOs.Permissions;
 using CloudShield.Entities.Role;
 using Commons;
 using DataContext;
+using DTOs.UserRolesPermissions;
 using Microsoft.EntityFrameworkCore;
 using Services.RolePermissions;
 
@@ -62,6 +63,46 @@ public class RolePermissionsRead_Repository : IReadCommandRolePermissions
     {
       _log.LogError(ex, ex.Message, "An Error Occurred on GetById Role Permission");
       return new ApiResponse<RolesPermissionsDTO>(false, ex.Message, null);
+    }
+  }
+
+  public async Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(int userId)
+  {
+    try
+    {
+      var rolePerms = await _context.RolePermissions
+          .Include(rp => rp.Role)
+          .Include(rp => rp.Permissions)
+          .Where(rp => rp.UserId == userId)
+          .ToListAsync();
+
+      if (!rolePerms.Any())
+        return new ApiResponse<List<UserRolePermissionsDTO>>(false, "User has no roles assigned");
+
+      var grouped = rolePerms
+          .GroupBy(rp => rp.Role)
+          .ToList();
+
+      var dtoList = new List<UserRolePermissionsDTO>();
+
+      foreach (var grp in grouped)
+      {
+        var dto = _mapper.Map<UserRolePermissionsDTO>(grp.Key);
+
+        dto.Permissions = grp
+            .Select(rp => _mapper.Map<PermissionsDTO>(rp.Permissions))
+            .DistinctBy(p => p.Id) 
+            .ToList();
+
+        dtoList.Add(dto);
+      }
+
+      return new ApiResponse<List<UserRolePermissionsDTO>>(true, "Roles and permissions retrieved", dtoList);
+    }
+    catch (Exception ex)
+    {
+      _log.LogError(ex, "Error retrieving roles/permissions for user {UserId}", userId);
+      return new ApiResponse<List<UserRolePermissionsDTO>>(false, "An error occurred while retrieving data");
     }
   }
 }

@@ -52,6 +52,17 @@ namespace CloudProShield.Controllers
             return Ok(result);
         }
 
+        [HttpGet("GetRolesAndPermissions")]
+        public async Task<IActionResult> GetRolesAndPermissions(int userId)
+        {
+            var result = await _readRolePermission.GetRolesAndPermissionsByUserId(userId);
+
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result);
+        }
+
         [HttpPut("UpdateRolePermission")]
         public async Task<IActionResult> Update([FromBody] RolesPermissionsDTO rolePermissionDTO)
         {
