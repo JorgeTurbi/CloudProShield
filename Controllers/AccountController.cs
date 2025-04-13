@@ -56,7 +56,6 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
         {
             var response = await _user.ConfirmEmailAsync(token);
