@@ -1833,7 +1833,7 @@ namespace CloudShield.Migrations
                             IsActive = true,
                             Name = "Admin",
                             OtpExpires = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Password = "Lavacaloca@123",
+                            Password = "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
                             Phone = "8294627091",
                             ResetPasswordExpires = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)

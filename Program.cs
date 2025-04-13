@@ -22,6 +22,7 @@ using Services.EmailServices;
 using Services.Permissions;
 using Services.RolePermissions;
 using Services.Roles;
+using Services.TokenServices;
 using Services.UserServices;
 
 var builder = WebApplication.CreateBuilder(args);

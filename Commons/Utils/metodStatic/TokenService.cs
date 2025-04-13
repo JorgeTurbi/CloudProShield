@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using DTOs.UsersDTOs;
-using Services.UserServices;
+using Services.TokenServices;
 
 public class TokenService : ITokenService
 {
@@ -40,9 +40,10 @@ public class TokenService : ITokenService
         return tokenHandler.WriteToken(token);
     }
 
-    public static string IssueResetToken(string email, IConfiguration cfg, TimeSpan life)
+    public  string IssueResetToken(string email, TimeSpan life)
     {
-        var key = Encoding.UTF8.GetBytes(cfg["JwtSettings:SecretKey"]);
+       
+        var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
         var handler = new JwtSecurityTokenHandler();
         var token = handler.CreateToken(new SecurityTokenDescriptor
         {

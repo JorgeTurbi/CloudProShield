@@ -402,11 +402,14 @@ public class ApplicationDbContext : DbContext
         new Role{
         Id=1,
         Name="Administrator",
-        Description="Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform."
+        Description="Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform.",
+   
+    
        }, new Role {
         Id=2,
         Name="User",
-        Description="Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality"
+        Description="Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality",
+      
        });
        
        //todo User Data Default
@@ -415,11 +418,12 @@ public class ApplicationDbContext : DbContext
         Id=1,
         Name="Admin",
         Email="jturbi@syschar.com",
-        Password="Lavacaloca@123",
+        Password="tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
         Phone="8294627091",
         Confirm=true,
         IsActive=true,
         ConfirmToken=""
+   
         
        });     
        

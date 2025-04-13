@@ -3,8 +3,8 @@ using CloudShield.Commons.Utils;
 using CloudShield.Repositories.Users;
 using Commons;
 using Commons.Hash;
-using DataContext;
 using Services.EmailServices;
+using Services.TokenServices;
 using Services.UserServices;
 
 namespace Repositories.Users;
@@ -14,19 +14,21 @@ public class UserForgotPassword_Repository : IUserForgotPassword
   private readonly UserPassword_Repository _repo;
   private readonly IEmailService _mail;
   private readonly IConfiguration _cfg;
+  private readonly ITokenService _token;
 
-  public UserForgotPassword_Repository(UserPassword_Repository repo, IEmailService mail, IConfiguration cfg)
-  {
-    _repo = repo;
-    _mail = mail;
-    _cfg = cfg;
-  }
-  public async Task<ApiResponse<string>> ForgotPasswordAsync(string email, string origin)
+    public UserForgotPassword_Repository(UserPassword_Repository repo, IEmailService mail, IConfiguration cfg, ITokenService token)
+    {
+        _repo = repo;
+        _mail = mail;
+        _cfg = cfg;
+        _token = token;
+    }
+    public async Task<ApiResponse<string>> ForgotPasswordAsync(string email, string origin)
   {
     var user = await _repo.FindByEmailAsync(email);
     if (user is null) return new ApiResponse<string>(false, "User not found", null);
 
-    user.ResetPasswordToken = TokenService.IssueResetToken(user.Email, _cfg, TimeSpan.FromHours(1));
+    user.ResetPasswordToken = _token.IssueResetToken(user.Email, TimeSpan.FromHours(1));
     user.ResetPasswordExpires = DateTime.UtcNow.AddHours(1);
     await _repo.SaveAsync();
 

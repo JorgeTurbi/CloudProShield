@@ -1,8 +1,4 @@
 using AutoMapper;
-using CloudShield.Entities.Entity_Address;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
 using Commons;
 using Commons.Hash;
 using Commons.Utils;
@@ -13,8 +9,8 @@ using Entities.Users;
 using Microsoft.EntityFrameworkCore;
 using Services.AddressServices;
 using Services.UserServices;
-using System.Text;
 using Services.EmailServices;
+using Services.TokenServices;
 
 namespace CloudShield.Repositories.Users;
 public class UserLib : IUserCommandCreate, ISaveServices
@@ -62,6 +58,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
     //todo mapping before save in database
     userDTO.Password = PasswordHasher.HashPassword(userDTO.Password);
     var Selected = _mapper.Map<User>(userDTO);
+    Selected.CreateAt=DateTime.UtcNow;
 
     await _context.User.AddAsync(Selected);
     bool result = await Save(cancellationToken);
@@ -118,50 +115,50 @@ public class UserLib : IUserCommandCreate, ISaveServices
     }
   }
 
-  //todo update user
-  public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
-  {
-    if (userDTO == null || userDTO.Id == 0)
-    {
-      return new ApiResponse<bool>(false, "Invalid user data");
-    }
+  // //todo update user
+  // public async Task<ApiResponse<bool>> Update(UserDTO userDTO)
+  // {
+  //   if (userDTO == null || userDTO.Id == 0)
+  //   {
+  //     return new ApiResponse<bool>(false, "Invalid user data");
+  //   }
 
-    var user = await _context.User.FindAsync(userDTO.Id);
-    if (user == null)
-    {
-      return new ApiResponse<bool>(false, "User not found");
-    }
+  //   var user = await _context.User.FindAsync(userDTO.Id);
+  //   if (user == null)
+  //   {
+  //     return new ApiResponse<bool>(false, "User not found");
+  //   }
 
-    // todo validate email for no repeat
-    if (!string.Equals(user.Email, userDTO.Email, StringComparison.OrdinalIgnoreCase))
-    {
-      bool emailExists = await _context.User.AnyAsync(u => u.Email == userDTO.Email && u.Id != userDTO.Id);
-      //todo validate if email exists          
-      if (emailExists)
-      {
-        return new ApiResponse<bool>(false, "Email already exists");
-      }
-    }
+  //   // todo validate email for no repeat
+  //   if (!string.Equals(user.Email, userDTO.Email, StringComparison.OrdinalIgnoreCase))
+  //   {
+  //     bool emailExists = await _context.User.AnyAsync(u => u.Email == userDTO.Email && u.Id != userDTO.Id);
+  //     //todo validate if email exists          
+  //     if (emailExists)
+  //     {
+  //       return new ApiResponse<bool>(false, "Email already exists");
+  //     }
+  //   }
 
-    //todo use AutoMapper to map the properties
-    _mapper.Map(userDTO, user);
+  //   //todo use AutoMapper to map the properties
+  //   _mapper.Map(userDTO, user);
 
-    //todo update datetime
-    user.UpdateAt = DateTime.UtcNow;
+  //   //todo update datetime
+  //   user.UpdateAt = DateTime.UtcNow;
 
-    // todo save changes
-    bool result = await Save();
-    if (result)
-    {
-      _log.LogInformation("User updated successfully");
-      return new ApiResponse<bool>(true, "User updated successfully", result);
-    }
-    else
-    {
-      _log.LogError("Error occurred while updating user with ID: {Id}", userDTO.Id);
-      return new ApiResponse<bool>(false, "Error occurred while updating user");
-    }
-  }
+  //   // todo save changes
+  //   bool result = await Save();
+  //   if (result)
+  //   {
+  //     _log.LogInformation("User updated successfully");
+  //     return new ApiResponse<bool>(true, "User updated successfully", result);
+  //   }
+  //   else
+  //   {
+  //     _log.LogError("Error occurred while updating user with ID: {Id}", userDTO.Id);
+  //     return new ApiResponse<bool>(false, "Error occurred while updating user");
+  //   }
+  // }
 
   //todo validate if users Exists
   private async Task<bool> Exists(UserDTO userDTO)
@@ -182,37 +179,37 @@ public class UserLib : IUserCommandCreate, ISaveServices
 
 
 
-    async Task<ApiResponse<bool>> IUserCommandCreate.ConfirmEmailAsync(string token)
+  async Task<ApiResponse<bool>> IUserCommandCreate.ConfirmEmailAsync(string token)
+  {
+    try
     {
-       try
-    {
-        var user = await _context.User.FirstOrDefaultAsync(u => u.ConfirmToken == token);
-        if (user == null)
-        {
-            _log.LogWarning("Invalid or expired confirmation token");
-            return new ApiResponse<bool>(false, "Invalid or expired confirmation token");
-        }
+      var user = await _context.User.FirstOrDefaultAsync(u => u.ConfirmToken == token);
+      if (user == null)
+      {
+        _log.LogWarning("Invalid or expired confirmation token");
+        return new ApiResponse<bool>(false, "Invalid or expired confirmation token");
+      }
 
-        user.Confirm = true;
-        user.IsActive=true;
-        user.ConfirmToken = string.Empty; // Invalidar el token para futuros usos
+      user.Confirm = true;
+      user.IsActive = true;
+      user.ConfirmToken = null; // Invalidar el token para futuros usos
+      
+      _context.User.Update(user);
+      bool result = await Save();
 
-        _context.User.Update(user);
-        bool result = await Save();
+      if (result)
+      {
+        _log.LogInformation("User email confirmed for {Email}", user.Email);
+        return new ApiResponse<bool>(true, "Email confirmed successfully");
+      }
 
-        if (result)
-        {
-            _log.LogInformation("User email confirmed for {Email}", user.Email);
-            return new ApiResponse<bool>(true, "Email confirmed successfully");
-        }
-
-        return new ApiResponse<bool>(false, "Failed to confirm email");
+      return new ApiResponse<bool>(false, "Failed to confirm email");
     }
     catch (Exception ex)
     {
-        _log.LogError(ex, "Error while confirming email");
-        return new ApiResponse<bool>(false, "Error while confirming email");
+      _log.LogError(ex, "Error while confirming email");
+      return new ApiResponse<bool>(false, "Error while confirming email");
     }
-      
-    }
+
+  }
 }
