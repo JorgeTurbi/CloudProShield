@@ -3,7 +3,7 @@ name: Deploy Web API to IIS on Windows Server
 on:
   push:
     branches:
-      - main  # o la rama que estés usando
+      - main  # o la rama que uses
 
 jobs:
   build-and-deploy:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '9.0.203'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -27,17 +27,17 @@ jobs:
       - name: Publish the project
         run: dotnet publish -c Release -o ./publish
 
-      - name: Stop IIS AppPool
+      - name: Stop IIS App
         run: |
           Import-Module WebAdministration
           Stop-WebAppPool -Name "AppCloud"
 
-      - name: Deploy to IIS folder
+      - name: Deploy to IIS
         run: |
           Remove-Item "C:\inetpub\wwwroot\Cloud\*" -Recurse -Force
           Copy-Item -Path ./publish/* -Destination "C:\inetpub\wwwroot\Cloud" -Recurse
 
-      - name: Start IIS AppPool
+      - name: Start IIS App
         run: |
-          Import-Module WebAdministration
           Start-WebAppPool -Name "AppCloud"
+
