@@ -49,15 +49,7 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-        [HttpGet("ConfirmEmail")]
-        public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
-        {
-            var response = await _user.ConfirmEmailAsync(token);
-            if (!response.Success)
-                return BadRequest(response);
-
-            return Ok(response);
-        }
+ 
 
         [HttpGet("GetByUserId")]
         public async Task<IActionResult> GetById(int id)
