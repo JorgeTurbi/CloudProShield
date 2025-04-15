@@ -6,7 +6,6 @@ public class Sessions: BaseAbstract
     public int UserId { get; set; }
     public string TokenRequest { get; set; }
     public DateTime ExpireTokenRequest { get; set; }
-    
     public string TokenRefresh { get; set; }
     public DateTime ExpireTokenRefresh { get; set; }
     public string IpAddress { get; set; }

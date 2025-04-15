@@ -22,8 +22,10 @@ using Services.EmailServices;
 using Services.Permissions;
 using Services.RolePermissions;
 using Services.Roles;
+using Services.SessionServices;
 using Services.TokenServices;
 using Services.UserServices;
+using Session_Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +92,9 @@ builder.Services.AddScoped<IDeleteCommandRolePermissions, RolePermissionsDelete_
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<UserPassword_Repository>();
 builder.Services.AddScoped<IUserForgotPassword, UserForgotPassword_Repository>();
+builder.Services.AddScoped<ISessionCommandCreate, SessionCreate_Repository>();
+builder.Services.AddScoped<ISessionCommandRead, SessionRead_Repository>();
+builder.Services.AddScoped<ISessionCommandUpdate, SessionUpdate_Repository>();
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
@@ -99,7 +104,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

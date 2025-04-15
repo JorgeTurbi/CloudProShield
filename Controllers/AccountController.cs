@@ -1,11 +1,9 @@
 using CloudShield.DTOs.UsersDTOs;
 using Commons;
 using DTOs.Address_DTOS;
-using DTOs.Roles;
 using DTOs.UsersDTOs;
 using Microsoft.AspNetCore.Mvc;
 using Services.AddressServices;
-using Services.Roles;
 using Services.UserServices;
 
 namespace CloudShield.Controllers
@@ -20,14 +18,13 @@ namespace CloudShield.Controllers
         private readonly IAddress _address;
         private readonly IUserCommandDelete _deleteUser;
 
-        public AccountController(IUserCommandCreate user, IUserCommandRead userRead, IAddress address,  IUserCommandsUpdate userUpdate, IUserCommandDelete deleteUser)
+        public AccountController(IUserCommandCreate user, IUserCommandRead userRead, IAddress address, IUserCommandsUpdate userUpdate, IUserCommandDelete deleteUser)
         {
             _user = user;
             _userRead = userRead;
             _userUpdate = userUpdate;
             _deleteUser = deleteUser;
             _address = address;
-      
         }
 
         [HttpPost("Add")]
@@ -58,16 +55,17 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
-      
         [HttpPost("Login")]
         public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
         {
             if (userLoginDTO == null) return BadRequest("Invalid login request");
 
-            ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO);
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+            string device = HttpContext.Request.Headers["User-Agent"].ToString() ?? string.Empty;
+
+            ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO, ipAddress, device);
             return Ok(result);
         }
-
 
         [HttpPut("UpdateUser")]
         public async Task<IActionResult> UpdateUser([FromBody] UserDTO_Only user)
@@ -88,8 +86,6 @@ namespace CloudShield.Controllers
 
             return Ok(result);
         }
-
-
         [HttpPut("DisabledUser")]
         public async Task<IActionResult> DisabledUser([FromBody] int user)
         {
@@ -112,7 +108,5 @@ namespace CloudShield.Controllers
 
             return Ok(result);
         }
-
-       
     }
 }

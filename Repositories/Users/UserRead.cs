@@ -9,6 +9,7 @@ using DataContext;
 using DTOs.UsersDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Services.SessionServices;
 using Services.UserServices;
 
 namespace Repositories.Users;
@@ -19,20 +20,21 @@ public class UserRead : IUserCommandRead
     private readonly IMapper _mapper;
     private readonly ILogger<UserRead> _log;
     private readonly IConfiguration _configuration;
+    private readonly ISessionCommandCreate _sessionCreate;
 
-    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, IConfiguration configuration)
+    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, IConfiguration configuration, ISessionCommandCreate sessionCreate)
     {
         _context = context;
         _mapper = mapper;
         _log = log;
         _configuration = configuration;
+        _sessionCreate = sessionCreate;
     }
 
     public async Task<ApiResponse<List<UserDTO_Only>>> GetAllUsers()
     {
         try
         {
-
             var users = await _context.User.ToListAsync();
 
             if (users == null || users.Count == 0)
@@ -71,7 +73,7 @@ public class UserRead : IUserCommandRead
             return new ApiResponse<UserDTO_Only>(false, "An error occurred while retrieving the user", null);
         }
     }
-    public async Task<ApiResponse<string>> LoginUser(UserLoginDTO userLoginDTO)
+    public async Task<ApiResponse<string>> LoginUser(UserLoginDTO userLoginDTO, string ipAddress, string device)
     {
         try
         {
@@ -86,9 +88,17 @@ public class UserRead : IUserCommandRead
             {
                 return new ApiResponse<string>(false, "Invalid email or password", null);
             }
+
+            // Generamos El token a 1 dia
             var userDTO = _mapper.Map<UserDTO>(user);
-            // Generate JWT token
-            var token = GenerateToken(userDTO, false);
+            var token = GenerateToken(userDTO, rememberMe:false);
+
+            var sessionResponse = await _sessionCreate.CreateSession(user.Id, ipAddress, device);
+
+            if (!sessionResponse.Success)
+            {
+                return new ApiResponse<string>(false, "Failed to create session", null);
+            }
 
             // Assuming you want to return a token or some identifier upon successful login
             return new ApiResponse<string>(true, "Login successful", token);

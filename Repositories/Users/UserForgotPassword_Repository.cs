@@ -13,14 +13,12 @@ public class UserForgotPassword_Repository : IUserForgotPassword
 {
   private readonly UserPassword_Repository _repo;
   private readonly IEmailService _mail;
-  private readonly IConfiguration _cfg;
   private readonly ITokenService _token;
 
-    public UserForgotPassword_Repository(UserPassword_Repository repo, IEmailService mail, IConfiguration cfg, ITokenService token)
+    public UserForgotPassword_Repository(UserPassword_Repository repo, IEmailService mail, ITokenService token)
     {
         _repo = repo;
         _mail = mail;
-        _cfg = cfg;
         _token = token;
     }
     public async Task<ApiResponse<string>> ForgotPasswordAsync(string email, string origin)
