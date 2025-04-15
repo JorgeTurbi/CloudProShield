@@ -22,6 +22,7 @@ using Services.EmailServices;
 using Services.Permissions;
 using Services.RolePermissions;
 using Services.Roles;
+using Services.TokenServices;
 using Services.UserServices;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,6 +88,8 @@ builder.Services.AddScoped<IUpdateCommandRolePermissions, RolePermissionsUpdate_
 builder.Services.AddScoped<ICreateCommandRolePermissions, RolePermissionsLib>();
 builder.Services.AddScoped<IDeleteCommandRolePermissions, RolePermissionsDelete_Repository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<UserPassword_Repository>();
+builder.Services.AddScoped<IUserForgotPassword, UserForgotPassword_Repository>();
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
@@ -126,7 +129,7 @@ Log.Logger = new LoggerConfiguration()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsProduction())
 {
     app.MapOpenApi();
     app.UseSwaggerUI(o =>

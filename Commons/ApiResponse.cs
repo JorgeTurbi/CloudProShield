@@ -1,7 +1,6 @@
 namespace Commons;
 public class ApiResponse<T>
 {
-
     public bool Success { get; set; }
     public string Message { get; set; }
     public T Data { get; set; }
@@ -17,7 +16,6 @@ public class ApiResponse<T>
     {
         Success = success;
         Message = message;
-
     }
 
     public ApiResponse(string message, T data)
