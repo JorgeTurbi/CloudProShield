@@ -46,8 +46,6 @@ namespace CloudShield.Controllers
             return Ok(result);
         }
 
- 
-
         [HttpGet("GetByUserId")]
         public async Task<IActionResult> GetById(int id)
         {
