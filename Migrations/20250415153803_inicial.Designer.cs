@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250413004627_Initial")]
-    partial class Initial
+    [Migration("20250415153803_inicial")]
+    partial class inicial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
