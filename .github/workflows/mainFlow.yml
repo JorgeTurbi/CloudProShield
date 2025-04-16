@@ -13,17 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: List .csproj path (verificación)
-        run: Get-ChildItem -Recurse | Where-Object { $_.Name -like '*.csproj' }
+      - name: Verificar rutas del proyecto
+        run: Get-ChildItem -Recurse -Filter *.csproj
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ./CloudProShield.csproj
 
       - name: Build the project
-        run: dotnet build ./CloudShield/CloudShield.csproj --configuration Release
+        run: dotnet build ./CloudProShield.csproj --configuration Release
 
       - name: Publish the project
-        run: dotnet publish ./CloudShield/CloudShield.csproj --configuration Release --output ./publish
+        run: dotnet publish ./CloudProShield.csproj --configuration Release --output ./publish
 
       - name: Stop IIS AppPool
         run: |
@@ -41,4 +41,5 @@ jobs:
       - name: Start IIS AppPool
         run: |
           Start-WebAppPool -Name "AppCloud"
+
 
