@@ -17,13 +17,13 @@ jobs:
         run: Get-ChildItem -Recurse -Filter *.csproj
 
       - name: Restore dependencies
-        run: dotnet restore ./CloudProShield/CloudProShield.csproj
+        run: dotnet restore ./CloudShield.csproj
 
       - name: Build the project
-        run: dotnet build ./CloudProShield/CloudProShield.csproj --configuration Release
+        run: dotnet build ./CloudShield.csproj --configuration Release
 
       - name: Publish the project
-        run: dotnet publish ./CloudProShield/CloudProShield.csproj --configuration Release --output ./publish
+        run: dotnet publish ./CloudShield.csproj --configuration Release --output ./publish
 
       - name: Stop IIS AppPool
         run: |
