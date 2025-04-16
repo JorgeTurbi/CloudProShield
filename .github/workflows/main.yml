@@ -1,0 +1,43 @@
+name: Deploy Web API to IIS on Windows Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verificar rutas del proyecto
+        run: Get-ChildItem -Recurse -Filter *.csproj
+
+      - name: Restore dependencies
+        run: dotnet restore ./CloudProShield/CloudProShield.csproj
+
+      - name: Build the project
+        run: dotnet build ./CloudProShield/CloudProShield.csproj --configuration Release
+
+      - name: Publish the project
+        run: dotnet publish ./CloudProShield/CloudProShield.csproj --configuration Release --output ./publish
+
+      - name: Stop IIS AppPool
+        run: |
+          Import-Module WebAdministration
+          Stop-WebAppPool -Name "AppCloud"
+
+      - name: Deploy to IIS
+        run: |
+          if (!(Test-Path "C:\inetpub\wwwroot\Cloud")) {
+            New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\Cloud"
+          }
+          Remove-Item "C:\inetpub\wwwroot\Cloud\*" -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path ./publish/* -Destination "C:\inetpub\wwwroot\Cloud" -Recurse
+
+      - name: Start IIS AppPool
+        run: |
+          Start-WebAppPool -Name "AppCloud"
