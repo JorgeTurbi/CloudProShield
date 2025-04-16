@@ -3,7 +3,7 @@ name: Deploy Web API to IIS on Windows Server
 on:
   push:
     branches:
-      - main
+      - main  # Cambia si usas otra rama
 
 jobs:
   build-and-deploy:
@@ -13,14 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: List .csproj path (verificación)
+        run: Get-ChildItem -Recurse | Where-Object { $_.Name -like '*.csproj' }
+
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build the project
-        run: dotnet build --configuration Release
+        run: dotnet build ./CloudShield/CloudShield.csproj --configuration Release
 
       - name: Publish the project
-        run: dotnet publish ./CloudShield/CloudShield.csproj -c Release -o ./publish
+        run: dotnet publish ./CloudShield/CloudShield.csproj --configuration Release --output ./publish
 
       - name: Stop IIS AppPool
         run: |
@@ -29,9 +32,13 @@ jobs:
 
       - name: Deploy to IIS
         run: |
-          Remove-Item "C:\inetpub\wwwroot\Cloud\*" -Recurse -Force
+          if (!(Test-Path "C:\inetpub\wwwroot\Cloud")) {
+            New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\Cloud"
+          }
+          Remove-Item "C:\inetpub\wwwroot\Cloud\*" -Recurse -Force -ErrorAction SilentlyContinue
           Copy-Item -Path ./publish/* -Destination "C:\inetpub\wwwroot\Cloud" -Recurse
 
       - name: Start IIS AppPool
         run: |
           Start-WebAppPool -Name "AppCloud"
+
