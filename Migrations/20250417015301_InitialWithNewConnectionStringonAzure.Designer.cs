@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250416022152_Initial")]
-    partial class Initial
+    [Migration("20250417015301_InitialWithNewConnectionStringonAzure")]
+    partial class InitialWithNewConnectionStringonAzure
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
