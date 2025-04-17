@@ -22,22 +22,35 @@ jobs:
       - name: Build the project
         run: dotnet build ./CloudShield.csproj --configuration Release
 
+      - name: Stop IIS AppPool (only if running)
+        run: |
+          Import-Module WebAdministration
+          $appPoolName = "AppCloud"
+          $appPool = Get-WebAppPoolState -Name $appPoolName
+          if ($appPool.Value -ne "Stopped") {
+            Stop-WebAppPool -Name $appPoolName
+          }
+
+      - name: Clean publish folder
+        run: |
+          if (Test-Path ./publish) {
+            Remove-Item ./publish -Recurse -Force
+          }
+
       - name: Publish the project
         run: dotnet publish ./CloudShield.csproj --configuration Release --output ./publish
 
-      - name: Stop IIS AppPool
-        run: |
-          Import-Module WebAdministration
-          Stop-WebAppPool -Name "AppCloud"
-
       - name: Deploy to IIS
         run: |
-          if (!(Test-Path "C:\inetpub\wwwroot\Cloud")) {
-            New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\Cloud"
+          $targetPath = "C:\inetpub\wwwroot\Cloud"
+          if (!(Test-Path $targetPath)) {
+            New-Item -ItemType Directory -Path $targetPath
           }
-          Remove-Item "C:\inetpub\wwwroot\Cloud\*" -Recurse -Force -ErrorAction SilentlyContinue
-          Copy-Item -Path ./publish/* -Destination "C:\inetpub\wwwroot\Cloud" -Recurse
+          Remove-Item "$targetPath\*" -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path ./publish/* -Destination $targetPath -Recurse
 
       - name: Start IIS AppPool
         run: |
+          Import-Module WebAdministration
           Start-WebAppPool -Name "AppCloud"
+
