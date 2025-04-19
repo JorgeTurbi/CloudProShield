@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Commons;
 using DTOs.Session;
 using Microsoft.AspNetCore.Mvc;
@@ -32,9 +33,14 @@ namespace CloudProShield.Controllers
         }
 
         [HttpPut("Logout")]
-        public async Task<IActionResult> Logout(int sessionId)
+        public async Task<IActionResult> Logout([FromQuery] string token)
         {
-            ApiResponse<bool> result = await _sessionUpdate.RevokeSession(sessionId);
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { success = false, message = "Token is required" });
+            }
+            
+            ApiResponse<bool> result = await _sessionUpdate.RevokeSession(token);
 
             if (result.Success == false)
             {

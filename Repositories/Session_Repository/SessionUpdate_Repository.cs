@@ -7,9 +7,9 @@ namespace Session_Repository;
 
 public class SessionUpdate_Repository : ISessionCommandUpdate
 {
-  private readonly ApplicationDbContext _context;  private readonly ILogger<SessionUpdate_Repository> _log;
+  private readonly ApplicationDbContext _context; private readonly ILogger<SessionUpdate_Repository> _log;
 
-  public SessionUpdate_Repository(ApplicationDbContext context,ILogger<SessionUpdate_Repository> log)
+  public SessionUpdate_Repository(ApplicationDbContext context, ILogger<SessionUpdate_Repository> log)
   {
     _context = context;
     _log = log;
@@ -43,11 +43,13 @@ public class SessionUpdate_Repository : ISessionCommandUpdate
     }
   }
 
-  public async Task<ApiResponse<bool>> RevokeSession(int sessionId)
+  public async Task<ApiResponse<bool>> RevokeSession(string token)
   {
     try
     {
-      var session = await _context.Sessions.FirstOrDefaultAsync(x => x.Id == sessionId);
+      var session = await _context.Sessions.FirstOrDefaultAsync(s =>
+                (s.TokenRequest == token || s.TokenRefresh == token) &&
+                !s.IsRevoke);
 
       if (session == null)
       {

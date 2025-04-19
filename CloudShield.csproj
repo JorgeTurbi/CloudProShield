@@ -23,8 +23,9 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.1.4" />
     <PackageReference Include="seriLog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.MSSqlServer" Version="8.2.0" />
-    <PackageReference Include="swashbuckle.AspNetCore.ReDoc" Version="8.1.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="8.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+    <PackageReference Include="swashbuckle.AspNetCore.ReDoc" Version="8.1.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="8.1.1" />
   </ItemGroup>
 
 </Project>

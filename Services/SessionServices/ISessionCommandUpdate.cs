@@ -4,7 +4,7 @@ namespace Services.SessionServices
 {
     public interface ISessionCommandUpdate
     {
-        Task<ApiResponse<bool>> RevokeSession(int sessionId);
+        Task<ApiResponse<bool>> RevokeSession(string token);
         Task<ApiResponse<int>> RevokeAllSessions(int userId);
     }
 }
