@@ -9,7 +9,9 @@ using DataContext;
 using DTOs.UsersDTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Services.EmailServices;
 using Services.SessionServices;
+using Services.TokenServices;
 using Services.UserServices;
 
 namespace Repositories.Users;
@@ -19,16 +21,18 @@ public class UserRead : IUserCommandRead
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<UserRead> _log;
-    private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
+    private readonly ITokenService _tokenService;
     private readonly ISessionCommandCreate _sessionCreate;
 
-    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, IConfiguration configuration, ISessionCommandCreate sessionCreate)
+    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, ITokenService tokenService, IEmailService emailService)
     {
         _context = context;
         _mapper = mapper;
         _log = log;
-        _configuration = configuration;
         _sessionCreate = sessionCreate;
+        _tokenService = tokenService;
+        _emailService = emailService;
     }
 
     public async Task<ApiResponse<List<UserDTO_Only>>> GetAllUsers()
@@ -91,7 +95,13 @@ public class UserRead : IUserCommandRead
 
             // Generamos El token a 1 dia
             var userDTO = _mapper.Map<UserDTO>(user);
-            var token = GenerateToken(userDTO, rememberMe:false);
+            var token = _tokenService.GenerateToken(userDTO, rememberMe: false);
+
+            // Enviar notificación de inicio de sesión
+            await _emailService.SendLoginNotificationAsync(
+                user.Email,
+                ipAddress,
+                device);
 
             var sessionResponse = await _sessionCreate.CreateSession(user.Id, ipAddress, device);
 
@@ -128,38 +138,6 @@ public class UserRead : IUserCommandRead
             _log.LogError(ex, "Error retrieving user by ID");
             return new ApiResponse<UserDTO_Only>(false, "An error occurred while retrieving the user", null);
         }
-    }
-
-
-    private string GenerateToken(UserDTO user, bool rememberMe)
-    {
-
-        var _key = _configuration["JwtSettings:SecretKey"];
-        if (string.IsNullOrEmpty(_key))
-        {
-            return null;
-        }
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var keyBytes = Encoding.UTF8.GetBytes(_key);
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new[]
-            {
-            new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Email, user.Email)
-        }),
-            Expires = rememberMe
-                ? DateTime.UtcNow.AddDays(14)   // Token dura 14 días si marcó "Remember Me"
-                : DateTime.UtcNow.AddHours(1),  // Token dura 1 hora si no
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(keyBytes),
-                SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
     }
 }
 

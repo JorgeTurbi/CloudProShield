@@ -4,7 +4,9 @@ using Commons.Utils;
 using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using RazorLight;
 using Reponsitories.PermissionsValidate_Repository;
 using Reponsitories.Roles_Repository;
 using Repositories.Address_Repository;
@@ -101,6 +103,16 @@ builder.Services.AddScoped<ISessionCommandRead, SessionRead_Repository>();
 builder.Services.AddScoped<ISessionCommandUpdate, SessionUpdate_Repository>();
 builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
+builder.Services.AddSingleton(sp =>
+{
+    var env = sp.GetRequiredService<IHostEnvironment>();
+    var templateRoot = Path.Combine(env.ContentRootPath, "Mail", "Templates");
+
+    return new RazorLightEngineBuilder()
+        .UseFileSystemProject(templateRoot)
+        .UseMemoryCachingProvider()
+        .Build();
+});
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
@@ -166,6 +178,12 @@ if (app.Environment.IsProduction())
 
 app.UseCors("AllowAllOrigins");
 app.UseHttpsRedirection();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Mail", "Assets")),
+    RequestPath = "/static"
+});
 app.UseAuthentication();
 app.UseAuthorization();
 

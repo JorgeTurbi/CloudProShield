@@ -1,0 +1,26 @@
+@model dynamic
+@{
+    ViewBag.Title = "Nuevo inicio de sesión";
+    Layout = "Layout";
+}
+
+<h2>Nuevo inicio de sesión detectado</h2>
+<p>Hola,</p>
+<p>Te informamos que se ha registrado un nuevo inicio de sesión en tu cuenta de @Model.AppName.</p>
+
+<div class="details">
+    <p><strong>Detalles del inicio de sesión:</strong></p>
+    <ul>
+        <li><strong>Fecha y hora:</strong> @Model.Date</li>
+        <li><strong>IP/Ubicación:</strong> @Model.IpInfo</li>
+        <li><strong>Dispositivo:</strong> @Model.Device</li>
+    </ul>
+</div>
+
+<div class="alert alert-warning">
+    <p><strong>¿No reconoces esta actividad?</strong> Te recomendamos que cambies tu contraseña inmediatamente y contactes con nuestro equipo de soporte.</p>
+</div>
+
+<div class="signature">
+    <p>Saludos,<br>El equipo de @Model.AppName</p>
+</div>

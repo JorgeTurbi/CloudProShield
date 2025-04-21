@@ -1,0 +1,216 @@
+/* Estilos base */
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  background-color: #f5f5f8;
+  line-height: 1.6;
+}
+
+/* Contenedor principal */
+.container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 0;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Encabezado */
+.header {
+  text-align: center;
+  padding: 25px 20px;
+  background: linear-gradient(135deg, #2d1a45 0%, #4a2a82 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.header h1 {
+  margin: 10px 0 0;
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: 0.5px;
+}
+
+.logo {
+  max-width: 120px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+/* Contenido principal */
+.content {
+  padding: 35px 30px;
+  line-height: 1.7;
+  color: #444;
+}
+
+.content h2 {
+  color: #4a2a82;
+  margin-top: 0;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.content p {
+  margin-bottom: 16px;
+}
+
+.content ul {
+  padding-left: 20px;
+  margin: 20px 0;
+}
+
+.content li {
+  margin-bottom: 10px;
+}
+
+.content strong {
+  color: #333;
+  font-weight: 600;
+}
+
+/* Botones */
+.button {
+  display: inline-block;
+  padding: 14px 28px;
+  background-color: #6b46c1;
+  color: white !important;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  margin: 25px 0;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(107, 70, 193, 0.2);
+  transition: all 0.3s ease;
+}
+
+.button:hover {
+  background-color: #5a3aa8;
+  box-shadow: 0 6px 12px rgba(107, 70, 193, 0.3);
+}
+
+/* Códigos OTP */
+.otp-code {
+  letter-spacing: 8px;
+  font-size: 36px;
+  font-weight: bold;
+  text-align: center;
+  margin: 30px 0;
+  padding: 20px;
+  background-color: #f8f7fc;
+  border-radius: 8px;
+  border: 1px solid #e9e4f5;
+  color: #4a2a82;
+}
+
+/* Información destacada */
+.info-box {
+  background-color: #f8f7fc;
+  border-left: 4px solid #6b46c1;
+  padding: 15px 20px;
+  margin: 20px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 25px 20px;
+  color: #777;
+  font-size: 14px;
+  background-color: #f8f7fc;
+  border-top: 1px solid #eee;
+}
+
+.footer p {
+  margin: 5px 0;
+}
+
+/* Detalles de información */
+.details {
+  background-color: #f8f7fc;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.details ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.details li {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.details li:last-child {
+  border-bottom: none;
+}
+
+/* Separador */
+.divider {
+  height: 1px;
+  background-color: #eee;
+  margin: 25px 0;
+}
+
+/* Responsive */
+@media only screen and (max-width: 640px) {
+  .container {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .content {
+    padding: 25px 20px;
+  }
+  
+  .button {
+    display: block;
+    text-align: center;
+  }
+}
+
+/* Iconos y elementos visuales */
+.icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Elementos de alerta */
+.alert {
+  padding: 15px 20px;
+  margin: 20px 0;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.alert-warning {
+  background-color: #fff8e6;
+  border-left: 4px solid #f6ad55;
+  color: #744210;
+}
+
+.alert-info {
+  background-color: #e6f7ff;
+  border-left: 4px solid #63b3ed;
+  color: #2a4365;
+}
+
+/* Sección de firma */
+.signature {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}

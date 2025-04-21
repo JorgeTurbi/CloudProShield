@@ -40,9 +40,8 @@ public class TokenService : ITokenService
         return tokenHandler.WriteToken(token);
     }
 
-    public  string IssueResetToken(string email, TimeSpan life)
+    public string IssueResetToken(string email, TimeSpan life)
     {
-       
         var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
         var handler = new JwtSecurityTokenHandler();
         var token = handler.CreateToken(new SecurityTokenDescriptor

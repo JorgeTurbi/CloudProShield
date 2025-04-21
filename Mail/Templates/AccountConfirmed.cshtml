@@ -1,0 +1,31 @@
+@model dynamic
+@{
+    ViewBag.Title = "Cuenta Confirmada";
+    Layout = "Layout";
+}
+
+<h2>¡Tu cuenta ha sido confirmada!</h2>
+<p>Hola,</p>
+<p>Nos complace informarte que tu cuenta en @Model.AppName ha sido verificada y activada correctamente.</p>
+
+<div class="info-box">
+    <p><strong>¡Felicidades!</strong> Ya puedes disfrutar de todos los beneficios y funcionalidades que @Model.AppName tiene para ofrecerte.</p>
+</div>
+
+<p>Estos son algunos pasos que puedes seguir a continuación:</p>
+
+<ul>
+    <li>Completa tu perfil con información adicional</li>
+    <li>Explora las características de seguridad disponibles</li>
+    <li>Configura tus preferencias de notificación</li>
+</ul>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="@Model.LoginUrl" class="button">Iniciar sesión ahora</a>
+</div>
+
+<p>Gracias por confiar en nosotros para proteger tu información digital.</p>
+
+<div class="signature">
+    <p>Saludos,<br>El equipo de @Model.AppName</p>
+</div>

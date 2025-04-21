@@ -192,7 +192,6 @@ public class UserLib : IUserCommandCreate, ISaveServices
 
       user.Confirm = true;
       user.IsActive = true;
-      user.ConfirmToken = null; // Invalidar el token para futuros usos
       
       _context.User.Update(user);
       bool result = await Save();
@@ -200,6 +199,10 @@ public class UserLib : IUserCommandCreate, ISaveServices
       if (result)
       {
         _log.LogInformation("User email confirmed for {Email}", user.Email);
+
+        // Send confirmation email
+        await _emailService.SendAccountConfirmedAsync(user.Email);
+
         return new ApiResponse<bool>(true, "Email confirmed successfully");
       }
 

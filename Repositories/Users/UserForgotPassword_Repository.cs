@@ -43,9 +43,7 @@ public class UserForgotPassword_Repository : IUserForgotPassword
       return new(false, "Invalid OTP");
 
     user.Password = PasswordHasher.HashPassword(newPassword);
-    user.ResetPasswordToken = null;
     user.ResetPasswordExpires = DateTime.MinValue;
-    user.Otp = null;
     user.OtpExpires = DateTime.MinValue;
     await _repo.SaveAsync();
 
