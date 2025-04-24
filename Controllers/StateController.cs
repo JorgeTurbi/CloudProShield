@@ -1,5 +1,6 @@
 using CloudShield.DTOs.State;
 using Commons;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.StateServices;
 
@@ -16,6 +17,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetAllStates")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetStates()
         {
             ApiResponse<List<StateDTO>> result = await _readStates.GetAll();
@@ -29,6 +31,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetStateById")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetStateById(int stateId)
         {
             ApiResponse<StateDTO> result = await _readStates.GetById(stateId);

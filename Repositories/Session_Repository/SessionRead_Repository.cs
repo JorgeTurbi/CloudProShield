@@ -80,4 +80,26 @@ public class SessionRead_Repository : ISessionCommandRead
       return new ApiResponse<List<SessionDTO>>(false, "An error occurred while retrieving sessions", null);
     }
   }
+
+  public async Task<ApiResponse<SessionDTO>> GetByToken(string token)
+  {
+    try
+    {
+      var session = await _context.Sessions
+        .AsNoTracking()
+        .FirstOrDefaultAsync(s => s.TokenRequest == token);
+
+        if (session == null || session.IsRevoke || session.ExpireTokenRequest < DateTime.UtcNow)
+        {
+          return new ApiResponse<SessionDTO>(false, "Invalid or expired session token", null);
+        }
+
+        return new ApiResponse<SessionDTO>(true, "Session found", _mapper.Map<SessionDTO>(session));
+    }
+    catch (Exception ex)
+    {
+      _log.LogError(ex, "Error retrieving session by token");
+      return new ApiResponse<SessionDTO>(false, "An error occurred while retrieving session", null);
+    }
+  }
 }

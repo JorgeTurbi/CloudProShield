@@ -1,4 +1,5 @@
 using System.Text;
+using CloudShield.Middlewares;
 using CloudShield.Repositories.Users;
 using Commons.Utils;
 using DataContext;
@@ -17,6 +18,7 @@ using Repositories.PermissionsUpdate_Repository;
 using Repositories.RolePermissions_Repository;
 using Repositories.Roles_Repository;
 using Repositories.RoleUpdate_Repository;
+using Repositories.Session_Repository;
 using Repositories.States_Repository;
 using Repositories.Users;
 using Scalar.AspNetCore;
@@ -103,6 +105,8 @@ builder.Services.AddScoped<ISessionCommandRead, SessionRead_Repository>();
 builder.Services.AddScoped<ISessionCommandUpdate, SessionUpdate_Repository>();
 builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
+builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
+
 builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
@@ -185,6 +189,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/static"
 });
 app.UseAuthentication();
+app.UseMiddleware<SessionValidationMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
