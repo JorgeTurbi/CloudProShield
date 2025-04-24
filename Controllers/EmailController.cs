@@ -1,6 +1,7 @@
 using Application.DTOs.Auth;
 using Commons;
 using DTOs.UsersDTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Roles;
 using Services.UserServices;
@@ -22,6 +23,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpGet("confirm-email")]
+    [AllowAnonymous]
     public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
     {
         var response = await _user.ConfirmEmailAsync(token);
@@ -32,6 +34,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpGet("GetByEmail")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetByEmail(string email)
     {
         ApiResponse<UserDTO_Only> result = await _userRead.GetUserByEmail(email);
@@ -41,6 +44,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ForgotPasword([FromBody] ForgotPasswordDTO dto)
     {
         var response = await _userForgot.ForgotPasswordAsync(dto.Email, Request.Headers.Origin);

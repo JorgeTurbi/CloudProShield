@@ -22,16 +22,14 @@ public class UserRead : IUserCommandRead
     private readonly IMapper _mapper;
     private readonly ILogger<UserRead> _log;
     private readonly IEmailService _emailService;
-    private readonly ITokenService _tokenService;
     private readonly ISessionCommandCreate _sessionCreate;
 
-    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, ITokenService tokenService, IEmailService emailService)
+    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, IEmailService emailService)
     {
         _context = context;
         _mapper = mapper;
         _log = log;
         _sessionCreate = sessionCreate;
-        _tokenService = tokenService;
         _emailService = emailService;
     }
 
@@ -95,7 +93,6 @@ public class UserRead : IUserCommandRead
 
             // Generamos El token a 1 dia
             var userDTO = _mapper.Map<UserDTO>(user);
-            var token = _tokenService.GenerateToken(userDTO, rememberMe: false);
 
             // Enviar notificación de inicio de sesión
             await _emailService.SendLoginNotificationAsync(
@@ -111,7 +108,7 @@ public class UserRead : IUserCommandRead
             }
 
             // Assuming you want to return a token or some identifier upon successful login
-            return new ApiResponse<string>(true, "Login successful", token);
+            return new ApiResponse<string>(true, "Login successful", sessionResponse.Data.TokenRequest);
         }
         catch (Exception ex)
         {
@@ -137,6 +134,37 @@ public class UserRead : IUserCommandRead
         {
             _log.LogError(ex, "Error retrieving user by ID");
             return new ApiResponse<UserDTO_Only>(false, "An error occurred while retrieving the user", null);
+        }
+    }
+
+    public async Task<ApiResponse<UserDTO_Only>> GetProfile(int userId)
+    {
+        try
+        {
+            var user = await _context.User
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user is null)
+                return new(false, "User not found", null);
+
+            // Sólo los campos que el front necesita
+            var profile = new UserDTO_Only
+            {
+                Id = user.Id,
+                Name = user.Name,
+                SurName = user.SurName,
+                Email = user.Email,
+                Phone = user.Phone,
+                Dob = user.Dob
+            };
+
+            return new(true, "Profile loaded", profile);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Error getting profile");
+            return new(false, "Unable to load profile", null);
         }
     }
 }

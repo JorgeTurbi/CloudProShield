@@ -1,5 +1,6 @@
 using CloudShield.DTOs.Country;
 using Commons;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.CountryServices;
 
@@ -16,6 +17,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetAllCountries")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCountries()
         {
             ApiResponse<List<CountryDTO>> result = await _readCountry.GetAll();
@@ -26,6 +28,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetCountryById")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCountry(int countryId)
         {
             ApiResponse<CountryDTO> result = await _readCountry.GetById(countryId);
