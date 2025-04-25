@@ -40,6 +40,24 @@ public class TokenService : ITokenService
         return tokenHandler.WriteToken(token);
     }
 
+    public string IssueSessionResetToken(int userId, string email, string name, TimeSpan life)
+{
+    var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
+    var handler = new JwtSecurityTokenHandler();
+    var token = handler.CreateToken(new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(new[] { 
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Name, name)
+        }),
+        Expires = DateTime.UtcNow.Add(life),
+        SigningCredentials = new(
+            new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+    });
+    return handler.WriteToken(token);
+}
+
     public string IssueResetToken(string email, TimeSpan life)
     {
         var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);

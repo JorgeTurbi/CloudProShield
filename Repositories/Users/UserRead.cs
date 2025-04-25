@@ -1,6 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using AutoMapper;
 using CloudShield.DTOs.UsersDTOs;
 using Commons;
@@ -8,10 +5,8 @@ using Commons.Hash;
 using DataContext;
 using DTOs.UsersDTOs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Services.EmailServices;
 using Services.SessionServices;
-using Services.TokenServices;
 using Services.UserServices;
 
 namespace Repositories.Users;

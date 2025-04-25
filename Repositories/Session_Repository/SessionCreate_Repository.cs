@@ -32,8 +32,8 @@ namespace Session_Repository
         if (user is null)
           return new ApiResponse<SessionDTO>(false, "User not found");
 
-        var token = _token.IssueResetToken(userId.ToString(), TimeSpan.FromDays(1));
-        var tokenRefresh = _token.IssueResetToken(userId.ToString(), TimeSpan.FromDays(7));
+        var token = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(1));
+        var tokenRefresh = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(7));
 
         var session = new Sessions
         {
