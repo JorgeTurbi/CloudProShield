@@ -119,10 +119,11 @@ public class EmailService : IEmailService
     }
 
     /* ---------- Confirmación de cuenta / Bienvenida ---------- */
-    public async Task SendConfirmationEmailAsync(string email, string token)
+    public async Task SendConfirmationEmailAsync(string email, string token, string originUrl)
     {
         var appName = _cfg["Application:Name"] ?? "CloudShield";
-        var confirmUrl = $"{_cfg["Frontend:BaseUrl"]}/confirm?token={token}";
+        var baseUrl = string.IsNullOrEmpty(originUrl) ? _cfg["Frontend:BaseUrl"] : originUrl;
+        var confirmUrl = $"{baseUrl}/confirm?token={token}";
 
         var model = new
         {

@@ -22,7 +22,7 @@ public class EmailController : ControllerBase
         _userForgot = userForgot;
     }
 
-    [HttpGet("confirm-email")]
+    [HttpPost("confirm-email")]
     [AllowAnonymous]
     public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
     {
@@ -55,6 +55,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpPost("send-otp")]
+    [AllowAnonymous]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpDTO dto)
     {
         var response = await _userForgot.SendOtpAsync(dto.Email, dto.Token);
@@ -65,6 +66,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpPost("verify-otp")]
+    [AllowAnonymous]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDTO dto)
     {
         var response = await _userForgot.VerifyOtpAsync(dto.Email, dto.Token, dto.Otp);
@@ -75,6 +77,7 @@ public class EmailController : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO dto)
     {
         var response = await _userForgot.ResetPasswordAsync(dto.Email, dto.Token, dto.Otp, dto.NewPassword, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");

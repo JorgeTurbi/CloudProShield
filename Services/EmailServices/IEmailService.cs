@@ -1,7 +1,7 @@
 namespace Services.EmailServices;
 public interface IEmailService
 {
-    Task SendConfirmationEmailAsync(string email, string token);
+    Task SendConfirmationEmailAsync(string email, string toke, string originUrl);
     Task SendAccountConfirmedAsync(string email);
     Task SendResetLinkAsync(string to, string resetLink);
     Task SendOtpAsync(string to, string otp);

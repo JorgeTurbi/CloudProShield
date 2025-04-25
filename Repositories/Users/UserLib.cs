@@ -35,7 +35,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
   }
 
   //todo Create a new User, it response an object type ApiResponse with boolean data
-  public async Task<ApiResponse<bool>> AddNew(UserDTO userDTO, CancellationToken cancellationToken = default)
+  public async Task<ApiResponse<bool>> AddNew(UserDTO userDTO, string originUrl = null, CancellationToken cancellationToken = default)
   {
     //todo validations if user is empty or null
 
@@ -67,7 +67,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
     if (result == true)
     {
       _log.LogInformation("User Registered {Email}", userDTO.Email);
-      await _emailService.SendConfirmationEmailAsync(userDTO.Email, userDTO.ConfirmToken);
+      await _emailService.SendConfirmationEmailAsync(userDTO.Email, userDTO.ConfirmToken, originUrl);
     }
     else
     {
