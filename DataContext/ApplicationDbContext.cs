@@ -1,4 +1,5 @@
 using CloudShield.Entities.Entity_Address;
+using CloudShield.Entities.Operations;
 using CloudShield.Entities.Role;
 using Entities.Users;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Role> Role => Set<Role>();
     public DbSet<Permissions> Permissions => Set<Permissions>();
     public DbSet<RolePermissions> RolePermissions => Set<RolePermissions>();
+    public DbSet<Space> Spaces => Set<Space>();
+    public DbSet<FileResource> FileResources => Set<FileResource>();
 
 
     //todo model created
@@ -27,6 +30,62 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        base.OnModelCreating(model);
+ /* -------------------- Space -------------------- */
+    model.Entity<Space>(e =>
+    {
+        e.ToTable("Spaces");
+
+        // Clave primaria heredada de BaseAbstract
+
+        e.Property(s => s.CustomerId)
+         .IsRequired();
+
+        e.Property(s => s.MaxBytes)
+         .IsRequired();
+
+        e.Property(s => s.UsedBytes)
+         .IsRequired();
+
+        e.Property(s => s.RowVersion)
+         .IsRowVersion();          // marca como token de concurrencia
+
+        // Índice opcional si buscas rápido por CustomerId
+        e.HasIndex(s => s.CustomerId);
+
+        // Relación 1-N → FileResource
+        e.HasMany(s => s.FileResources)
+         .WithOne(fr => fr.Space)
+         .HasForeignKey(fr => fr.SpaceId)
+         .OnDelete(DeleteBehavior.Cascade);
+    });
+
+    /* -------------------- FileResource -------------------- */
+    model.Entity<FileResource>(e =>
+    {
+        e.ToTable("FileResources");
+
+        e.Property(fr => fr.FileName)
+         .HasMaxLength(255)
+         .IsRequired();
+
+        e.Property(fr => fr.ContentType)
+         .HasMaxLength(255)
+         .IsRequired();
+
+        e.Property(fr => fr.RelativePath)
+         .HasMaxLength(1024)
+         .IsRequired();
+
+        e.Property(fr => fr.SizeBytes)
+         .IsRequired();
+
+        // Índice único para evitar duplicados dentro de un Space
+        e.HasIndex(fr => new { fr.SpaceId, fr.RelativePath })
+         .IsUnique();
+    });
+
+
         //todo Sessions to Users
         model.Entity<Sessions>().HasOne(a => a.User)
         .WithMany(a => a.Sessions)
@@ -58,14 +117,14 @@ public class ApplicationDbContext : DbContext
         .HasForeignKey<Address>(a => a.UserId)
         .OnDelete(DeleteBehavior.NoAction);
 
-         //todo Address to Country
-       model.Entity<Address>()
-    .HasOne(a => a.Country)
-    .WithMany(c => c.Address)
-    .HasForeignKey(a => a.CountryId)
-    .OnDelete(DeleteBehavior.NoAction);
+        //todo Address to Country
+        model.Entity<Address>()
+     .HasOne(a => a.Country)
+     .WithMany(c => c.Address)
+     .HasForeignKey(a => a.CountryId)
+     .OnDelete(DeleteBehavior.NoAction);
 
-            //todo Address to To State
+        //todo Address to To State
         model.Entity<Address>()
         .HasOne(u => u.State)
         .WithOne(a => a.Address)
@@ -314,120 +373,123 @@ public class ApplicationDbContext : DbContext
             new Country { Id = 232, Name = "Zimbabwe" }
                 );
 
- //todo data default State
-  // todo state data default
-    model.Entity<State>().HasData(
-        new State { Id = 1, Name = "Alabama", CountryId = 220 },
-        new State { Id = 2, Name = "Alaska", CountryId = 220 },
-        new State { Id = 3, Name = "Arizona", CountryId = 220 },
-        new State { Id = 4, Name = "Arkansas", CountryId = 220 },
-        new State { Id = 5, Name = "California", CountryId = 220 },
-        new State { Id = 6, Name = "Colorado", CountryId = 220 },
-        new State { Id = 7, Name = "Connecticut", CountryId = 220 },
-        new State { Id = 8, Name = "Delaware", CountryId = 220 },
-        new State { Id = 9, Name = "Florida", CountryId = 220 },
-        new State { Id = 10, Name = "Georgia", CountryId = 220 },
-        new State { Id = 11, Name = "Hawaii", CountryId = 220 },
-        new State { Id = 12, Name = "Idaho", CountryId = 220 },
-        new State { Id = 13, Name = "Illinois", CountryId = 220 },
-        new State { Id = 14, Name = "Indiana", CountryId = 220 },
-        new State { Id = 15, Name = "Iowa", CountryId = 220 },
-        new State { Id = 16, Name = "Kansas", CountryId = 220 },
-        new State { Id = 17, Name = "Kentucky", CountryId = 220 },
-        new State { Id = 18, Name = "Louisiana", CountryId = 220 },
-        new State { Id = 19, Name = "Maine", CountryId = 220 },
-        new State { Id = 20, Name = "Maryland", CountryId = 220 },
-        new State { Id = 21, Name = "Massachusetts", CountryId = 220 },
-        new State { Id = 22, Name = "Michigan", CountryId = 220 },
-        new State { Id = 23, Name = "Minnesota", CountryId = 220 },
-        new State { Id = 24, Name = "Mississippi", CountryId = 220 },
-        new State { Id = 25, Name = "Missouri", CountryId = 220 },
-        new State { Id = 26, Name = "Montana", CountryId = 220 },
-        new State { Id = 27, Name = "Nebraska", CountryId = 220 },
-        new State { Id = 28, Name = "Nevada", CountryId = 220 },
-        new State { Id = 29, Name = "New Hampshire", CountryId = 220 },
-        new State { Id = 30, Name = "New Jersey", CountryId = 220 },
-        new State { Id = 31, Name = "New Mexico", CountryId = 220 },
-        new State { Id = 32, Name = "New York", CountryId = 220 },
-        new State { Id = 33, Name = "North Carolina", CountryId = 220 },
-        new State { Id = 34, Name = "North Dakota", CountryId = 220 },
-        new State { Id = 35, Name = "Ohio", CountryId = 220 },
-        new State { Id = 36, Name = "Oklahoma", CountryId = 220 },
-        new State { Id = 37, Name = "Oregon", CountryId = 220 },
-        new State { Id = 38, Name = "Pennsylvania", CountryId = 220 },
-        new State { Id = 39, Name = "Rhode Island", CountryId = 220 },
-        new State { Id = 40, Name = "South Carolina", CountryId = 220 },
-        new State { Id = 41, Name = "South Dakota", CountryId = 220 },
-        new State { Id = 42, Name = "Tennessee", CountryId = 220 },
-        new State { Id = 43, Name = "Texas", CountryId = 220 },
-        new State { Id = 44, Name = "Utah", CountryId = 220 },
-        new State { Id = 45, Name = "Vermont", CountryId = 220 },
-        new State { Id = 46, Name = "Virginia", CountryId = 220 },
-        new State { Id = 47, Name = "Washington", CountryId = 220 },
-        new State { Id = 48, Name = "West Virginia", CountryId = 220 },
-        new State { Id = 49, Name = "Wisconsin", CountryId = 220 },
-        new State { Id = 50, Name = "Wyoming", CountryId = 220 },
-        new State { Id = 51, Name = "District of Columbia", CountryId = 220 }
-    );
+        //todo data default State
+        // todo state data default
+        model.Entity<State>().HasData(
+            new State { Id = 1, Name = "Alabama", CountryId = 220 },
+            new State { Id = 2, Name = "Alaska", CountryId = 220 },
+            new State { Id = 3, Name = "Arizona", CountryId = 220 },
+            new State { Id = 4, Name = "Arkansas", CountryId = 220 },
+            new State { Id = 5, Name = "California", CountryId = 220 },
+            new State { Id = 6, Name = "Colorado", CountryId = 220 },
+            new State { Id = 7, Name = "Connecticut", CountryId = 220 },
+            new State { Id = 8, Name = "Delaware", CountryId = 220 },
+            new State { Id = 9, Name = "Florida", CountryId = 220 },
+            new State { Id = 10, Name = "Georgia", CountryId = 220 },
+            new State { Id = 11, Name = "Hawaii", CountryId = 220 },
+            new State { Id = 12, Name = "Idaho", CountryId = 220 },
+            new State { Id = 13, Name = "Illinois", CountryId = 220 },
+            new State { Id = 14, Name = "Indiana", CountryId = 220 },
+            new State { Id = 15, Name = "Iowa", CountryId = 220 },
+            new State { Id = 16, Name = "Kansas", CountryId = 220 },
+            new State { Id = 17, Name = "Kentucky", CountryId = 220 },
+            new State { Id = 18, Name = "Louisiana", CountryId = 220 },
+            new State { Id = 19, Name = "Maine", CountryId = 220 },
+            new State { Id = 20, Name = "Maryland", CountryId = 220 },
+            new State { Id = 21, Name = "Massachusetts", CountryId = 220 },
+            new State { Id = 22, Name = "Michigan", CountryId = 220 },
+            new State { Id = 23, Name = "Minnesota", CountryId = 220 },
+            new State { Id = 24, Name = "Mississippi", CountryId = 220 },
+            new State { Id = 25, Name = "Missouri", CountryId = 220 },
+            new State { Id = 26, Name = "Montana", CountryId = 220 },
+            new State { Id = 27, Name = "Nebraska", CountryId = 220 },
+            new State { Id = 28, Name = "Nevada", CountryId = 220 },
+            new State { Id = 29, Name = "New Hampshire", CountryId = 220 },
+            new State { Id = 30, Name = "New Jersey", CountryId = 220 },
+            new State { Id = 31, Name = "New Mexico", CountryId = 220 },
+            new State { Id = 32, Name = "New York", CountryId = 220 },
+            new State { Id = 33, Name = "North Carolina", CountryId = 220 },
+            new State { Id = 34, Name = "North Dakota", CountryId = 220 },
+            new State { Id = 35, Name = "Ohio", CountryId = 220 },
+            new State { Id = 36, Name = "Oklahoma", CountryId = 220 },
+            new State { Id = 37, Name = "Oregon", CountryId = 220 },
+            new State { Id = 38, Name = "Pennsylvania", CountryId = 220 },
+            new State { Id = 39, Name = "Rhode Island", CountryId = 220 },
+            new State { Id = 40, Name = "South Carolina", CountryId = 220 },
+            new State { Id = 41, Name = "South Dakota", CountryId = 220 },
+            new State { Id = 42, Name = "Tennessee", CountryId = 220 },
+            new State { Id = 43, Name = "Texas", CountryId = 220 },
+            new State { Id = 44, Name = "Utah", CountryId = 220 },
+            new State { Id = 45, Name = "Vermont", CountryId = 220 },
+            new State { Id = 46, Name = "Virginia", CountryId = 220 },
+            new State { Id = 47, Name = "Washington", CountryId = 220 },
+            new State { Id = 48, Name = "West Virginia", CountryId = 220 },
+            new State { Id = 49, Name = "Wisconsin", CountryId = 220 },
+            new State { Id = 50, Name = "Wyoming", CountryId = 220 },
+            new State { Id = 51, Name = "District of Columbia", CountryId = 220 }
+        );
 
         //todo permissions data default
         model.Entity<Permissions>().HasData(
             new Permissions
-        {
-            Id = 1,
-            Name = "Write",
+            {
+                Id = 1,
+                Name = "Write",
 
-        }, new Permissions
-        {
-            Id = 2,
-            Name = "Reader",
+            }, new Permissions
+            {
+                Id = 2,
+                Name = "Reader",
 
-        }, new Permissions
-        {
-            Id = 3,
-            Name = "View"
-        }, new Permissions
-        {
-            Id = 4,
-            Name = "Delete"
-        }, new Permissions
-        {
-            Id = 5,
-            Name = "Update"
-        });
+            }, new Permissions
+            {
+                Id = 3,
+                Name = "View"
+            }, new Permissions
+            {
+                Id = 4,
+                Name = "Delete"
+            }, new Permissions
+            {
+                Id = 5,
+                Name = "Update"
+            });
 
         //todo Role data default
-       
-       model.Entity<Role>().HasData(
-        new Role{
-        Id=1,
-        Name="Administrator",
-        Description="Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform.",
-   
-    
-       }, new Role {
-        Id=2,
-        Name="User",
-        Description="Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality",
-      
-       });
-       
-       //todo User Data Default
-       model.Entity<User>().HasData(
-        new User{
-        Id=1,
-        Name="Admin",
-        Email="jturbi@syschar.com",
-        Password="tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
-        Phone="8294627091",
-        Confirm=true,
-        IsActive=true,
-        ConfirmToken=""
-   
-        
-       });     
-       
-        base.OnModelCreating(model);
+
+        model.Entity<Role>().HasData(
+         new Role
+         {
+             Id = 1,
+             Name = "Administrator",
+             Description = "Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform.",
+
+
+         }, new Role
+         {
+             Id = 2,
+             Name = "User",
+             Description = "Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality",
+
+         });
+
+        //todo User Data Default
+        model.Entity<User>().HasData(
+         new User
+         {
+             Id = 1,
+             Name = "Admin",
+             Email = "jturbi@syschar.com",
+             Password = "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
+             Phone = "8294627091",
+             Confirm = true,
+             IsActive = true,
+             ConfirmToken = ""
+
+
+         });
+
+
 
     }
 

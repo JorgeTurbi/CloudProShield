@@ -35,7 +35,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
   }
 
   //todo Create a new User, it response an object type ApiResponse with boolean data
-  public async Task<ApiResponse<bool>> AddNew(UserDTO userDTO, string originUrl = null, CancellationToken cancellationToken = default)
+  public async Task<ApiResponse<bool>> AddNew(UserDTO userDTO, string? originUrl, CancellationToken cancellationToken = default)
   {
     //todo validations if user is empty or null
 
@@ -58,7 +58,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
     //todo mapping before save in database
     userDTO.Password = PasswordHasher.HashPassword(userDTO.Password);
     var Selected = _mapper.Map<User>(userDTO);
-    Selected.CreateAt=DateTime.UtcNow;
+    Selected.CreateAt = DateTime.UtcNow;
 
     await _context.User.AddAsync(Selected);
     bool result = await Save(cancellationToken);
@@ -67,7 +67,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
     if (result == true)
     {
       _log.LogInformation("User Registered {Email}", userDTO.Email);
-      await _emailService.SendConfirmationEmailAsync(userDTO.Email, userDTO.ConfirmToken, originUrl);
+      await _emailService.SendConfirmationEmailAsync(userDTO.Email, userDTO.ConfirmToken, originUrl!);
     }
     else
     {
@@ -76,17 +76,18 @@ public class UserLib : IUserCommandCreate, ISaveServices
     }
 
     ApiResponse<bool> ResponseAddress = await _addressLib.AddNew(SelectedAddress, cancellationToken);
-    if (ResponseAddress == null || ResponseAddress.Data == false)
-    {
-      _log.LogError("Error occurred while saving the address for user {Email}", userDTO.Email);
-      return new ApiResponse<bool>(false, "Error occurred while saving the address for user");
-    }
+    // if ( !result)
+    // {
+    //   _log.LogError("Error occurred while saving the address for user {Email}", userDTO.Email);
+    // //  return new ApiResponse<bool>(false, "Error occurred while saving the address for user");
+    // }
 
-    else
-    {
-      _log.LogInformation("Address was saved for user {Email}", userDTO.Email);
-      return new ApiResponse<bool>(true, "User Created Successfully");
-    }
+    // else
+    // {
+    //   _log.LogInformation("Address was saved for user {Email}", userDTO.Email);
+    //  // return new ApiResponse<bool>(true, "User Created Successfully");
+    // }
+    return new ApiResponse<bool>(result, "User Created Successfully", result);
   }
 
   //todo to save data

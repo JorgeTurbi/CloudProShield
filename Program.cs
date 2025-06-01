@@ -1,9 +1,11 @@
 using System.Text;
 using CloudShield.Middlewares;
 using CloudShield.Repositories.Users;
+using CloudShield.Services.OperationStorage;
 using Commons.Utils;
 using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -37,6 +39,16 @@ using Session_Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 5L * 1024 * 1024 * 1024; // 5 GB
+});
+
+builder.WebHost.ConfigureKestrel(o =>
+{
+    o.Limits.MaxRequestBodySize = 5L * 1024 * 1024 * 1024; // 5 GB
+});
+
 //todo add cors policy
 builder.Services.AddCors(options =>
 {
@@ -60,7 +72,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
 
-    var key = Encoding.UTF8.GetBytes(jwtSettin.SecretKey);
+    var key = Encoding.UTF8.GetBytes(jwtSettin!.SecretKey);
 
 
     options.TokenValidationParameters = new TokenValidationParameters
@@ -106,6 +118,7 @@ builder.Services.AddScoped<ISessionCommandUpdate, SessionUpdate_Repository>();
 builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
 builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
+builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
 
 builder.Services.AddSingleton(sp =>
 {
