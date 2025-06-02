@@ -10,6 +10,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Contracts.Events;
+using RabbitMQ.Integration.Handlers;
+using RabbitMQ.Messaging;
+using RabbitMQ.Messaging.Rabbit;
 using RazorLight;
 using Reponsitories.PermissionsValidate_Repository;
 using Reponsitories.Roles_Repository;
@@ -119,6 +123,15 @@ builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
 builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
 builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
+builder.Services.AddScoped<IFolderProvisioner>(sp =>
+    (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
+);
+
+// Handlers
+builder.Services.AddScoped<CustomerCreatedEventHandler>();
+
+// RabbitMQ
+builder.Services.AddSingleton<IEventBus, EventBusRabbitMq>();
 
 builder.Services.AddSingleton(sp =>
 {
@@ -203,6 +216,11 @@ Log.Logger = new LoggerConfiguration()
 // builder.Host.UseSerilog();
 
 var app = builder.Build();
+
+var bus = app.Services.GetRequiredService<IEventBus>();
+bus.Subscribe<CustomerCreatedEvent, CustomerCreatedEventHandler>(
+    routingKey: "CustomerCreatedEvent"
+);
 
 // Configure the HTTP request pipeline.
 // ✅ SWAGGER CON SWASHBUCKLE
