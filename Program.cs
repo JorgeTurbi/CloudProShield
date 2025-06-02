@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using RazorLight;
 using Reponsitories.PermissionsValidate_Repository;
 using Reponsitories.Roles_Repository;
@@ -52,41 +53,40 @@ builder.WebHost.ConfigureKestrel(o =>
 //todo add cors policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllOrigins",
+    options.AddPolicy(
+        "AllowAllOrigins",
         builder =>
         {
-            builder.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-        });
+            builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+    );
 });
 
 var jwtSettin = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-
-    var key = Encoding.UTF8.GetBytes(jwtSettin!.SecretKey);
-
-
-    options.TokenValidationParameters = new TokenValidationParameters
+builder
+    .Services.AddAuthentication(options =>
     {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ClockSkew = TimeSpan.Zero // sin tolerancia de expiración
-    };
-});
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        var key = Encoding.UTF8.GetBytes(jwtSettin!.SecretKey);
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ClockSkew = TimeSpan.Zero, // sin tolerancia de expiración
+        };
+    });
 
 builder.Services.AddAuthorization();
+
 //todo services configuration
 builder.Services.AddScoped<IUserCommandCreate, UserLib>();
 builder.Services.AddScoped<IUserCommandsUpdate, UserUpdate_Repository>();
@@ -133,6 +133,7 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
+
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -140,18 +141,54 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Usar Swashbuckle para mejor compatibilidad
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Services TaxCloud API", Version = "v1" });
 
-// // path to the log folder
+    // Configuración de JWT para Swagger
+    c.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
+        {
+            Description =
+                "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer",
+        }
+    );
+
+    c.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer",
+                    },
+                },
+                Array.Empty<string>()
+            },
+        }
+    );
+});
+
+// path to the log folder
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
 
-// // create log folder if it does not exists
+// create log folder if it does not exists
 if (!Directory.Exists(logFolderPath))
 {
     Directory.CreateDirectory(logFolderPath);
 }
 
-// // configure serilog
+// configure serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -168,39 +205,44 @@ Log.Logger = new LoggerConfiguration()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsProduction())
+// ✅ SWAGGER CON SWASHBUCKLE
+app.UseSwagger();
+app.UseSwaggerUI(o =>
 {
-    app.MapOpenApi();
-    app.UseSwaggerUI(o =>
-    {
-        o.SwaggerEndpoint("/openapi/v1.json", "Services TaxCloud V1");
-    });
+    o.SwaggerEndpoint("/swagger/v1/swagger.json", "Services TaxCloud V1");
+    o.RoutePrefix = "swagger";
+});
 
+// ✅ REDOC Y SCALAR SOLO EN DESARROLLO SI QUIERES
+if (app.Environment.IsDevelopment())
+{
+    // Estas herramientas también necesitan endpoints de Swagger
     app.UseReDoc(option =>
     {
-        option.SpecUrl("/openapi/v1.json");
+        option.SpecUrl("/swagger/v1/swagger.json");
     });
-    app.MapScalarApiReference();
+    // Comentar Scalar por ahora para evitar conflictos
+    // app.MapScalarApiReference();
 }
-//  app.MapOpenApi();
-//    app.UseSwaggerUI(o=>{
-//     o.SwaggerEndpoint("/openapi/v1.json", "Services TaxCloud V1" );
-//    } );
-
-//    app.UseReDoc(option=>{
-//     option.SpecUrl("/openapi/v1.json");
-//    });
-//    app.MapScalarApiReference();
-
 
 app.UseCors("AllowAllOrigins");
-app.UseHttpsRedirection();
-app.UseStaticFiles(new StaticFileOptions
+
+// ✅ HTTPS REDIRECTION SOLO SI HAY PUERTO HTTPS CONFIGURADO
+if (app.Environment.IsProduction())
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "Mail", "Assets")),
-    RequestPath = "/static"
-});
+    app.UseHttpsRedirection();
+}
+
+app.UseStaticFiles(
+    new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(
+            Path.Combine(Directory.GetCurrentDirectory(), "Mail", "Assets")
+        ),
+        RequestPath = "/static",
+    }
+);
+
 app.UseAuthentication();
 app.UseMiddleware<SessionValidationMiddleware>();
 app.UseAuthorization();

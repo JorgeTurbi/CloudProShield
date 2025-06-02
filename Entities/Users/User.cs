@@ -2,13 +2,10 @@ using CloudShield.Commons;
 using CloudShield.Entities.Entity_Address;
 using CloudShield.Entities.Role;
 
-
 namespace Entities.Users;
-
 
 public class User : BaseAbstract
 {
-
     public required string Name { get; set; }
     public string SurName { get; set; }
     public DateTime Dob { get; set; }
