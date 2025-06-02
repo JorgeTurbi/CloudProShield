@@ -30,7 +30,7 @@ public class TokenService : ITokenService
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Email, user.Email)
             }),
-            Expires = rememberMe ? DateTime.UtcNow.AddDays(14) : DateTime.UtcNow.AddHours(1),
+            Expires = rememberMe ? DateTime.UtcNow.AddDays(14) : DateTime.UtcNow.AddDays(1),
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(keyBytes),
                 SecurityAlgorithms.HmacSha256Signature)
