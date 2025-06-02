@@ -30,7 +30,7 @@ public class TokenService : ITokenService
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Email, user.Email)
             }),
-            Expires = rememberMe ? DateTime.UtcNow.AddDays(14) : DateTime.UtcNow.AddHours(1),
+            Expires = rememberMe ? DateTime.UtcNow.AddDays(14) : DateTime.UtcNow.AddDays(1),
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(keyBytes),
                 SecurityAlgorithms.HmacSha256Signature)
@@ -39,6 +39,24 @@ public class TokenService : ITokenService
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
     }
+
+    public string IssueSessionResetToken(int userId, string email, string name, TimeSpan life)
+{
+    var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
+    var handler = new JwtSecurityTokenHandler();
+    var token = handler.CreateToken(new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(new[] { 
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Name, name)
+        }),
+        Expires = DateTime.UtcNow.Add(life),
+        SigningCredentials = new(
+            new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+    });
+    return handler.WriteToken(token);
+}
 
     public string IssueResetToken(string email, TimeSpan life)
     {

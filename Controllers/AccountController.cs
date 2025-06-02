@@ -33,7 +33,8 @@ namespace CloudShield.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Add([FromBody] UserDTO user)
         {
-            ApiResponse<bool> result = await _user.AddNew(user);
+            string originUrl = Request.Headers["Origin"].ToString();
+            ApiResponse<bool> result = await _user.AddNew(user, originUrl);
 
             if (result.Success == false) return BadRequest(new { result });
 
