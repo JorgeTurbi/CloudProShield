@@ -74,8 +74,13 @@ public async Task<IActionResult> Upload(
         string relativePath,
         CancellationToken ct)
     {
+         // 1) Decodificamos %2F, espacios, tildes, etc.
+    var decodedPath = Uri.UnescapeDataString(relativePath);
+
+    // 2) (Opcional) Normaliza para evitar traversal
+    decodedPath = decodedPath.Replace('\\', '/').TrimStart('/');
         var (ok, stream, contentType, reason) =
-            await _storage.GetFileAsync(customerId, relativePath, ct);
+            await _storage.GetFileAsync(customerId, decodedPath, ct);
 
         if (!ok)
             return NotFound(new { error = reason });

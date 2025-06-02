@@ -106,9 +106,8 @@ public class LocalDiskStorageService : IStorageService
 
         // Verifica que el archivo pertenezca al cliente
         var meta = await _db.FileResources
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync(fr => fr.SpaceId == space.Id &&
-                                                       fr.RelativePath == relativePath, ct);
+                            .AsNoTracking().Where(fr=>fr.SpaceId == space.Id && fr.RelativePath == relativePath)
+                            .FirstOrDefaultAsync(ct);
         if (meta is null)
             return (false, null, null, "Archivo no registrado")!;
 
