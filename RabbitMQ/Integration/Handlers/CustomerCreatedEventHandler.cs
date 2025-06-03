@@ -20,7 +20,33 @@ public sealed class CustomerCreatedEventHandler : IIntegrationEventHandler<Custo
 
     public async Task HandleAsync(CustomerCreatedEvent e, CancellationToken ct)
     {
-        await _folders.EnsureStructureAsync(e.CustomerId, e.Folders, ct);
-        _log.LogInformation("CustomerCreatedEvent procesado → {Cust}", e.CustomerId);
+        try
+        {
+            _log.LogInformation(
+                "Procesando CustomerCreatedEvent para cliente {CustomerId} con {FolderCount} carpetas",
+                e.CustomerId,
+                e.Folders.Count
+            );
+
+            await _folders.EnsureStructureAsync(e.CustomerId, e.Folders, ct);
+
+            _log.LogInformation(
+                "CustomerCreatedEvent procesado exitosamente → {CustomerId}",
+                e.CustomerId
+            );
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex,
+                "Error procesando CustomerCreatedEvent para cliente {CustomerId}",
+                e.CustomerId
+            );
+
+            // Dependiendo de tu estrategia, podrías:
+            // - Re-lanzar la excepción para que RabbitMQ reintente
+            // - Enviar a una cola de errores (Dead Letter Queue)
+            // - Solo loggear y continuar
+            throw; // Para que RabbitMQ sepa que falló
+        }
     }
 }

@@ -1,6 +1,8 @@
 using System.Text;
 using CloudShield.Middlewares;
 using CloudShield.Repositories.Users;
+using CloudShield.Services.FileSystemRead_Repository;
+using CloudShield.Services.FileSystemServices;
 using CloudShield.Services.OperationStorage;
 using Commons.Utils;
 using DataContext;
@@ -123,6 +125,7 @@ builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
 builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
 builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
+builder.Services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
 builder.Services.AddScoped<IFolderProvisioner>(sp =>
     (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
 );
