@@ -1,0 +1,15 @@
+2025-06-04 17:15:15.304 -04:00 [INF] Suscrito a CustomerCreatedEvent en CustomerCreatedEvent.Queue
+2025-06-04 17:15:16.548 -04:00 [INF] User profile is available. Using 'C:\Users\ccastillog\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-06-04 17:15:17.050 -04:00 [INF] Now listening on: http://localhost:5009
+2025-06-04 17:15:17.051 -04:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-06-04 17:15:17.052 -04:00 [INF] Hosting environment: Development
+2025-06-04 17:15:17.052 -04:00 [INF] Content root path: C:\Users\ccastillog\Downloads\CLOUDSH\CloudProShield
+2025-06-04 17:15:17.669 -04:00 [INF] Request starting HTTP/1.1 GET http://localhost:5009/_framework/aspnetcore-browser-refresh.js - null null
+2025-06-04 17:15:17.776 -04:00 [INF] Request finished HTTP/1.1 GET http://localhost:5009/_framework/aspnetcore-browser-refresh.js - 200 16459 application/javascript; charset=utf-8 109.8008ms
+2025-06-04 17:15:17.959 -04:00 [INF] Request starting HTTP/1.1 GET http://localhost:5009/swagger/v1/swagger.json - null null
+2025-06-04 17:15:18.471 -04:00 [INF] Request finished HTTP/1.1 GET http://localhost:5009/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 512.9228ms
+2025-06-04 17:15:19.997 -04:00 [INF] Request starting HTTP/1.1 GET http://localhost:5009/_framework/aspnetcore-browser-refresh.js - null null
+2025-06-04 17:15:20.035 -04:00 [INF] Request finished HTTP/1.1 GET http://localhost:5009/_framework/aspnetcore-browser-refresh.js - 200 16459 application/javascript; charset=utf-8 37.5873ms
+2025-06-04 17:15:20.260 -04:00 [INF] Request starting HTTP/1.1 GET http://localhost:5009/swagger/v1/swagger.json - null null
+2025-06-04 17:15:20.332 -04:00 [INF] Request finished HTTP/1.1 GET http://localhost:5009/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 71.8007ms
+2025-06-04 17:15:48.611 -04:00 [INF] Application is shutting down...

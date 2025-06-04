@@ -9,12 +9,15 @@ using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
 using RabbitMQ.Contracts.Events;
 using RabbitMQ.Integration.Handlers;
 using RabbitMQ.Messaging;
+using RabbitMQ.Messaging.NoOp;
 using RabbitMQ.Messaging.Rabbit;
 using RazorLight;
 using Reponsitories.PermissionsValidate_Repository;
@@ -45,6 +48,28 @@ using Services.UserServices;
 using Session_Repository;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
+if (!Directory.Exists(logFolderPath))
+{
+    Directory.CreateDirectory(logFolderPath);
+}
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        Path.Combine(logFolderPath, "LogsApplication-.txt"),
+        rollingInterval: RollingInterval.Day
+    )
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// ✅ MOSTRAR INFORMACIÓN DE INICIO TEMPRANO
+Console.WriteLine("🚀 Iniciando CloudProShield API...");
+Console.WriteLine($"📁 Logs guardados en: {logFolderPath}");
 
 builder.Services.Configure<FormOptions>(o =>
 {
@@ -130,11 +155,61 @@ builder.Services.AddScoped<IFolderProvisioner>(sp =>
     (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
 );
 
+// CONFIGURACIÓN ROBUSTA DE RABBITMQ INTEGRADA
+var rabbitMQEnabled = builder.Configuration.GetValue<bool>("RabbitMQ:Enabled", true);
+
+if (rabbitMQEnabled)
+{
+    // Verificar conectividad a RabbitMQ al inicio
+    bool isRabbitMQAvailable = false;
+    try
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost",
+            Port = int.Parse(builder.Configuration["RabbitMQ:Port"] ?? "5672"),
+            UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest",
+            Password = builder.Configuration["RabbitMQ:Password"] ?? "guest",
+            RequestedConnectionTimeout = TimeSpan.FromSeconds(5),
+            RequestedHeartbeat = TimeSpan.FromSeconds(10)
+        };
+
+        using var testConnection = factory.CreateConnection();
+        using var testChannel = testConnection.CreateModel();
+        testChannel.ExchangeDeclare("startup-test", ExchangeType.Direct, durable: false, autoDelete: true);
+
+        isRabbitMQAvailable = true;
+        builder.Services.AddSingleton<IEventBus, EventBusRabbitMq>();
+        Console.WriteLine("✅ RabbitMQ disponible - usando EventBusRabbitMq");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  RabbitMQ no disponible: {ex.Message} - usando NoOpEventBus");
+        isRabbitMQAvailable = false;
+    }
+
+    if (!isRabbitMQAvailable)
+    {
+        // Implementación No-Op inline
+        builder.Services.AddSingleton<IEventBus>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<IEventBus>>();
+            return new NoOpEventBus(logger);
+        });
+    }
+}
+else
+{
+    Console.WriteLine("🔕 RabbitMQ deshabilitado en configuración - usando NoOpEventBus");
+    builder.Services.AddSingleton<IEventBus>(sp =>
+    {
+        var logger = sp.GetRequiredService<ILogger<IEventBus>>();
+        return new NoOpEventBus(logger);
+    });
+}
+
 // Handlers
 builder.Services.AddScoped<CustomerCreatedEventHandler>();
-
-// RabbitMQ
-builder.Services.AddSingleton<IEventBus, EventBusRabbitMq>();
 
 builder.Services.AddSingleton(sp =>
 {
@@ -195,35 +270,7 @@ builder.Services.AddSwaggerGen(c =>
     );
 });
 
-// path to the log folder
-var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
-
-// create log folder if it does not exists
-if (!Directory.Exists(logFolderPath))
-{
-    Directory.CreateDirectory(logFolderPath);
-}
-
-// configure serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .WriteTo.File(
-        Path.Combine(logFolderPath, "LogsApplication-.txt"),
-        rollingInterval: RollingInterval.Day
-    )
-    .CreateLogger();
-
-// Use Serilog
-// builder.Host.UseSerilog();
-
 var app = builder.Build();
-
-var bus = app.Services.GetRequiredService<IEventBus>();
-bus.Subscribe<CustomerCreatedEvent, CustomerCreatedEventHandler>(
-    routingKey: "CustomerCreatedEvent"
-);
 
 // Configure the HTTP request pipeline.
 // ✅ SWAGGER CON SWASHBUCKLE
@@ -234,18 +281,32 @@ app.UseSwaggerUI(o =>
     o.RoutePrefix = "swagger";
 });
 
-// ✅ REDOC Y SCALAR SOLO EN DESARROLLO SI QUIERES
+// ✅ CONFIGURACIÓN DE SUSCRIPCIONES RABBITMQ INTEGRADA
+try
+{
+    var bus = app.Services.GetRequiredService<IEventBus>();
+
+    if (bus is EventBusRabbitMq)
+    {
+        bus.Subscribe<CustomerCreatedEvent, CustomerCreatedEventHandler>("CustomerCreatedEvent");
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning("Messaging no disponible: {Message}", ex.Message);
+}
+
+// ReDoc solo en desarrollo
 if (app.Environment.IsDevelopment())
 {
-    // Estas herramientas también necesitan endpoints de Swagger
     app.UseReDoc(option =>
     {
         option.SpecUrl("/swagger/v1/swagger.json");
+        option.RoutePrefix = "redoc";
     });
-    // Comentar Scalar por ahora para evitar conflictos
-    // app.MapScalarApiReference();
 }
 
+app.UseSerilogRequestLogging();
 app.UseCors("AllowAllOrigins");
 
 // ✅ HTTPS REDIRECTION SOLO SI HAY PUERTO HTTPS CONFIGURADO
@@ -270,4 +331,82 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// ✅ HEALTH CHECK ENDPOINTS
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "Healthy",
+    timestamp = DateTime.UtcNow,
+    rabbitmq = app.Services.GetRequiredService<IEventBus>() is EventBusRabbitMq ? "Connected" : "Disabled/Unavailable"
+}));
+
+app.MapGet("/health/rabbitmq", () =>
+{
+    var bus = app.Services.GetRequiredService<IEventBus>();
+    if (bus is EventBusRabbitMq)
+    {
+        return Results.Ok(new { status = "Healthy", message = "RabbitMQ connected" });
+    }
+    return Results.Json(new { status = "Unavailable", message = "RabbitMQ not available" }, statusCode: 503);
+});
+
+// ✅ MENSAJES DE INICIO PROMINENTES
+Console.WriteLine("\n" + new string('=', 60));
+Console.WriteLine("🌟 CLOUDPROSHIELD API INICIADA EXITOSAMENTE");
+Console.WriteLine(new string('=', 60));
+
+var urls = builder.Configuration["ASPNETCORE_URLS"]?.Split(';') ?? new[] { "http://localhost:5009" };
+foreach (var url in urls)
+{
+    Console.WriteLine($"🌐 Servidor disponible en: {url}");
+    Console.WriteLine($"📚 Swagger UI: {url}/swagger");
+    Console.WriteLine($"❤️  Health Check: {url}/health");
+}
+
+Console.WriteLine(new string('=', 60));
+
+// ✅ ABRIR SWAGGER AUTOMÁTICAMENTE EN DESARROLLO
+if (app.Environment.IsDevelopment())
+{
+    var url = urls.FirstOrDefault()?.Replace("*", "localhost") ?? "http://localhost:5009";
+    var swaggerUrl = $"{url}/swagger";
+
+    try
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = swaggerUrl,
+            UseShellExecute = true
+        });
+        Console.WriteLine($"🚀 Abriendo Swagger automáticamente: {swaggerUrl}");
+    }
+    catch
+    {
+        Console.WriteLine($"💡 Abra manualmente Swagger en: {swaggerUrl}");
+    }
+}
+
+Console.WriteLine("\n✅ Presiona Ctrl+C para detener el servidor\n");
+
 app.Run();
+
+// ✅ IMPLEMENTACIÓN NO-OP MEJORADA
+public sealed class NoOpEventBus : IEventBus
+{
+    private readonly ILogger<IEventBus> _logger;
+
+    public NoOpEventBus(ILogger<IEventBus> logger)
+    {
+        _logger = logger;
+    }
+
+    public void Publish(string routingKey, object message)
+    {
+        _logger.LogDebug("Evento {RoutingKey} omitido - RabbitMQ no disponible", routingKey);
+    }
+
+    public void Subscribe<TEvent, THandler>(string routingKey)
+        where THandler : IIntegrationEventHandler<TEvent>
+    {
+        _logger.LogDebug("Suscripción {RoutingKey} omitida - RabbitMQ no disponible", routingKey);
+    }
+}
