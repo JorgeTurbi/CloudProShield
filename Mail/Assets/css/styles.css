@@ -4,7 +4,7 @@ body, html {
   padding: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
-  background-color: #f5f5f8;
+  background-color: #f8f9fa;
   line-height: 1.6;
 }
 
@@ -22,14 +22,14 @@ body, html {
 /* Encabezado */
 .header {
   text-align: center;
-  padding: 25px 20px;
-  background: linear-gradient(135deg, #2d1a45 0%, #4a2a82 100%);
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
   color: white;
   border-bottom: none;
 }
 
 .header h1 {
-  margin: 10px 0 0;
+  margin: 5px 0 0;
   font-weight: 600;
   font-size: 24px;
   letter-spacing: 0.5px;
@@ -38,7 +38,7 @@ body, html {
 .logo {
   max-width: 120px;
   height: auto;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 /* Contenido principal */
@@ -49,7 +49,7 @@ body, html {
 }
 
 .content h2 {
-  color: #4a2a82;
+  color: #4285f4;
   margin-top: 0;
   font-size: 22px;
   font-weight: 600;
@@ -78,20 +78,21 @@ body, html {
 .button {
   display: inline-block;
   padding: 14px 28px;
-  background-color: #6b46c1;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
   color: white !important;
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 600;
   margin: 25px 0;
   text-align: center;
-  box-shadow: 0 4px 10px rgba(107, 70, 193, 0.2);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
   transition: all 0.3s ease;
 }
 
 .button:hover {
-  background-color: #5a3aa8;
-  box-shadow: 0 6px 12px rgba(107, 70, 193, 0.3);
+  background: linear-gradient(135deg, #3367d6 0%, #2d8f47 100%);
+  box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
+  transform: translateY(-1px);
 }
 
 /* Códigos OTP */
@@ -102,19 +103,19 @@ body, html {
   text-align: center;
   margin: 30px 0;
   padding: 20px;
-  background-color: #f8f7fc;
-  border-radius: 8px;
-  border: 1px solid #e9e4f5;
-  color: #4a2a82;
+  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
+  border-radius: 12px;
+  border: 2px solid #4285f4;
+  color: #4285f4;
 }
 
 /* Información destacada */
 .info-box {
-  background-color: #f8f7fc;
-  border-left: 4px solid #6b46c1;
+  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
+  border-left: 4px solid #4285f4;
   padding: 15px 20px;
   margin: 20px 0;
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 8px 8px 0;
 }
 
 /* Footer */
@@ -123,8 +124,8 @@ body, html {
   padding: 25px 20px;
   color: #777;
   font-size: 14px;
-  background-color: #f8f7fc;
-  border-top: 1px solid #eee;
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+  border-top: 1px solid #e8eaed;
 }
 
 .footer p {
@@ -133,10 +134,11 @@ body, html {
 
 /* Detalles de información */
 .details {
-  background-color: #f8f7fc;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
+  border-radius: 12px;
   padding: 20px;
   margin: 20px 0;
+  border: 1px solid #dadce0;
 }
 
 .details ul {
@@ -147,7 +149,7 @@ body, html {
 
 .details li {
   padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #dadce0;
 }
 
 .details li:last-child {
@@ -157,7 +159,7 @@ body, html {
 /* Separador */
 .divider {
   height: 1px;
-  background-color: #eee;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
   margin: 25px 0;
 }
 
@@ -192,25 +194,25 @@ body, html {
 .alert {
   padding: 15px 20px;
   margin: 20px 0;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
 }
 
 .alert-warning {
-  background-color: #fff8e6;
-  border-left: 4px solid #f6ad55;
-  color: #744210;
+  background-color: #fef7e0;
+  border-left: 4px solid #f9ab00;
+  color: #b06000;
 }
 
 .alert-info {
-  background-color: #e6f7ff;
-  border-left: 4px solid #63b3ed;
-  color: #2a4365;
+  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
+  border-left: 4px solid #4285f4;
+  color: #1a73e8;
 }
 
 /* Sección de firma */
 .signature {
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #dadce0;
 }

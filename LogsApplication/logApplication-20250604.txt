@@ -1,0 +1,14 @@
+2025-06-04 15:46:16.068 -04:00 [WRN] ⚠️  Usando NoOpEventBus - suscripciones omitidas
+2025-06-04 15:49:37.915 -04:00 [INF] Suscrito a CustomerCreatedEvent en CustomerCreatedEvent.Queue
+2025-06-04 15:49:38.033 -04:00 [INF] ✅ Suscripciones RabbitMQ configuradas exitosamente
+2025-06-04 16:00:44.712 -04:00 [WRN] ⚠️  Usando NoOpEventBus - suscripciones omitidas
+2025-06-04 16:02:11.184 -04:00 [WRN] ⚠️  Usando NoOpEventBus - suscripciones omitidas
+2025-06-04 16:06:37.770 -04:00 [WRN] ⚠️  Usando NoOpEventBus - suscripciones omitidas
+2025-06-04 16:09:34.188 -04:00 [WRN] ⚠️  Usando NoOpEventBus - suscripciones omitidas
+2025-06-04 16:19:46.531 -04:00 [INF] Suscrito a CustomerCreatedEvent en CustomerCreatedEvent.Queue
+2025-06-04 16:29:28.108 -04:00 [INF] Procesando CustomerCreatedEvent para cliente "47314e68-e94d-465a-a9e9-08dda3a6806d" con 2 carpetas
+2025-06-04 16:29:32.019 -04:00 [INF] Space creado en BD para cliente "47314e68-e94d-465a-a9e9-08dda3a6806d" con cuota de 5 GB
+2025-06-04 16:29:32.020 -04:00 [INF] Estructura de "47314e68-e94d-465a-a9e9-08dda3a6806d" lista en storage\2025\47314e68e94d465aa9e908dda3a6806d
+2025-06-04 16:29:32.021 -04:00 [INF] CustomerCreatedEvent procesado exitosamente → "47314e68-e94d-465a-a9e9-08dda3a6806d"
+2025-06-04 16:43:26.648 -04:00 [INF] Suscrito a CustomerCreatedEvent en CustomerCreatedEvent.Queue
+2025-06-04 16:48:21.104 -04:00 [INF] Suscrito a CustomerCreatedEvent en CustomerCreatedEvent.Queue

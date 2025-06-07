@@ -220,7 +220,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             .FirstOrDefaultAsync(ct);
     }
 
-    public Task EnsureStructureAsync(
+    public async Task EnsureStructureAsync(
         Guid customerId,
         IEnumerable<string> folders,
         CancellationToken ct = default
@@ -234,7 +234,36 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         foreach (var f in folders.Distinct(StringComparer.OrdinalIgnoreCase))
             Directory.CreateDirectory(Path.Combine(customerFolder, f));
 
-        _log.LogInformation("Estructura de {Cust} lista en {Path}", customerId, customerFolder);
-        return Task.CompletedTask;
+        var existingSpace = await _db.Spaces.AsTracking().FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+        if (existingSpace == null)
+        {
+            var newSpace = new Space
+            {
+                CustomerId = customerId,
+                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
+                UsedBytes = 0,
+                CreateAt = DateTime.UtcNow,
+            };
+
+            await _db.Spaces.AddAsync(newSpace, ct);
+            await _db.SaveChangesAsync(ct);
+
+            _log.LogInformation(
+            "Space creado en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
+            customerId,
+            newSpace.MaxBytes / (1024 * 1024 * 1024)
+        );
+        }
+        else
+        {
+            _log.LogInformation(
+                "Space ya existe en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
+                customerId,
+                existingSpace.MaxBytes / (1024 * 1024 * 1024)
+            );
+        }
+
+        _log.LogInformation("Estructura de {CustomerId} lista en {Path}", customerId, customerFolder);
     }
 }
