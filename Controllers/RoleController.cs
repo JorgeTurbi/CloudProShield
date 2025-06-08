@@ -54,7 +54,7 @@ public class RoleController: ControllerBase
         }
 
         [HttpGet("GetByRoleId")]
-        public async Task<IActionResult> GetRoleById(int RoleId)
+        public async Task<IActionResult> GetRoleById(Guid RoleId)
         {
             ApiResponse<RolesDTO> result = await _readRole.GetbyId(RoleId);
             if (result.Success == false)
@@ -66,7 +66,7 @@ public class RoleController: ControllerBase
         }
 
         [HttpGet("GetRoleByUserId")]
-        public async Task<IActionResult> GetRoleByUserId(int userId)
+        public async Task<IActionResult> GetRoleByUserId(Guid userId)
         {
             var result = await _readRole.GetByUserId(userId);
 

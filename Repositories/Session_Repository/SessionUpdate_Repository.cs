@@ -15,7 +15,7 @@ public class SessionUpdate_Repository : ISessionCommandUpdate
     _log = log;
   }
 
-  public async Task<ApiResponse<int>> RevokeAllSessions(int userId)
+  public async Task<ApiResponse<int>> RevokeAllSessions(Guid userId)
   {
     try
     {

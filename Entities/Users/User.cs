@@ -1,5 +1,6 @@
 using CloudShield.Commons;
 using CloudShield.Entities.Entity_Address;
+using CloudShield.Entities.Operations;
 using CloudShield.Entities.Role;
 
 namespace Entities.Users;
@@ -22,4 +23,5 @@ public class User : BaseAbstract
     public virtual Address Address { get; set; }
     public virtual ICollection<RolePermissions> RolePermissions { get; set; }
     public virtual ICollection<Sessions> Sessions { get; set; }
+    public virtual SpaceCloud? SpaceCloud { get; set; }
 }

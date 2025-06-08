@@ -5,6 +5,6 @@ namespace Services.SessionServices
 {
   public interface ISessionCommandCreate
   {
-    Task<ApiResponse<SessionDTO>> CreateSession(int userId, string ip, string device);
+    Task<ApiResponse<SessionDTO>> CreateSession(Guid userId, string ip, string device);
   }
 }

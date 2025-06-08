@@ -4,7 +4,7 @@ namespace CloudShield.Entities.Operations;
 // Dominios/Storage/Entities/FileResource.cs
 public class FileResource : BaseAbstract
 {
-    public int SpaceId { get; set; }
+    public Guid SpaceId { get; set; }
     public string FileName { get; set; } = default!;
     public string ContentType { get; set; } = default!;
     public string RelativePath { get; set; } = default!; // p. ej. "images/logo.png"

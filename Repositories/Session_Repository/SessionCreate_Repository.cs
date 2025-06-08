@@ -24,7 +24,7 @@ namespace Session_Repository
       _token = tokenService;
     }
 
-    public async Task<ApiResponse<SessionDTO>> CreateSession(int userId, string ip, string device)
+    public async Task<ApiResponse<SessionDTO>> CreateSession(Guid userId, string ip, string device)
     {
       try
       {

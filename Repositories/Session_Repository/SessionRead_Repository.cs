@@ -39,7 +39,7 @@ public class SessionRead_Repository : ISessionCommandRead
     }
   }
 
-  public async Task<ApiResponse<SessionDTO>> GetById(int sessionId)
+  public async Task<ApiResponse<SessionDTO>> GetById(Guid sessionId)
   {
     try
     {
@@ -60,7 +60,7 @@ public class SessionRead_Repository : ISessionCommandRead
     }
   }
 
-  public async Task<ApiResponse<List<SessionDTO>>> GetByUserId(int userId)
+  public async Task<ApiResponse<List<SessionDTO>>> GetByUserId(Guid userId)
   {
     try
     {

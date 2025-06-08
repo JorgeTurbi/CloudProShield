@@ -12,6 +12,21 @@ public class FileSystemProfile : Profile
         .ForMember(dest => dest.Category, opt => opt.MapFrom(src => GetCategoryFromPath(src.RelativePath)))
         .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreateAt))
         .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdateAt));
+
+
+    CreateMap<FileResourceCloud, FileItemDTO>()
+         .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreateAt))
+         .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdateAt))
+         .ForMember(dest => dest.Category, opt => opt.MapFrom(src => GetCategoryFromPath(src.RelativePath)))
+         .ForMember(dest => dest.FileName, opt => opt.MapFrom(src => src.FileName))
+         .ForMember(dest => dest.ContentType, opt => opt.MapFrom(src => src.ContentType))
+         .ForMember(dest => dest.RelativePath, opt => opt.MapFrom(src => src.RelativePath))
+         .ForMember(dest => dest.SizeBytes, opt => opt.MapFrom(src => src.SizeBytes));
+
+
+
+
+
   }
 
   private static string GetCategoryFromPath(string relativePath)

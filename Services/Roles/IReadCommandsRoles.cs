@@ -6,6 +6,6 @@ namespace Services.Roles;
 public interface IReadCommandRoles
 {
     Task<ApiResponse<List<RolesDTO>>> GetAll();
-    Task<ApiResponse<RolesDTO>> GetbyId(int RoleId);
-    Task<ApiResponse<RolesDTO>> GetByUserId(int UserId);
+    Task<ApiResponse<RolesDTO>> GetbyId(Guid RoleId);
+    Task<ApiResponse<RolesDTO>> GetByUserId(Guid UserId);
 }

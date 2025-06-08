@@ -6,8 +6,8 @@ namespace Services.RolePermissions
 {
     public interface IReadCommandRolePermissions
     {
-        Task<ApiResponse<RolesPermissionsDTO>> GetById(int id);
+        Task<ApiResponse<RolesPermissionsDTO>> GetById(Guid id);
         Task<ApiResponse<List<RolesPermissionsDTO>>> GetAll();
-        Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(int userId);
+        Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(Guid userId);
     }
 }

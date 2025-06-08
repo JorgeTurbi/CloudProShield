@@ -6,5 +6,5 @@ namespace Services.Permissions;
 public interface IReadCommandPermissions
 {
   Task<ApiResponse<List<PermissionsDTO>>> GetAll();
-  Task<ApiResponse<PermissionsDTO>> GetById(int PermissionId);
+  Task<ApiResponse<PermissionsDTO>> GetById(Guid PermissionId);
 }

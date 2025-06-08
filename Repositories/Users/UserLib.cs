@@ -1,4 +1,6 @@
 using AutoMapper;
+using CloudShield.DTOs.FileSystem;
+using CloudShield.Entities.Operations;
 using Commons;
 using Commons.Hash;
 using Commons.Utils;
@@ -79,6 +81,17 @@ public class UserLib : IUserCommandCreate, ISaveServices
             ResetPasswordExpires = DateTime.MinValue,
             Otp = string.Empty, // Initialize to avoid null issues
             OtpExpires = DateTime.MinValue,
+            SpaceCloud= userDTO.Plan != null
+                ? await ValidatePlan(userDTO.Plan, userDTO.Id)
+                : new SpaceCloud
+                {
+                    MaxBytes = 0,
+                    UsedBytes = 0,
+                    UserId = Guid.Empty,
+                    CreateAt = DateTime.UtcNow,
+                    UpdateAt = DateTime.UtcNow,
+                    RowVersion = Array.Empty<byte>(),
+                },
         };
 
         try
@@ -123,6 +136,44 @@ public class UserLib : IUserCommandCreate, ISaveServices
             _log.LogError(ex, "Error occurred while creating user {Email}", userDTO.Email);
             return new ApiResponse<bool>(false, "Error occurred while creating user");
         }
+    }
+
+
+    private async Task<SpaceCloud> ValidatePlan(string plan, Guid userId)
+    {
+        //todo validate if user is null
+        if (plan == null)
+        {
+            _log.LogError("plan  null");
+            return new SpaceCloud
+            {
+                MaxBytes = 0,
+                UsedBytes = 0,
+                UserId = Guid.Empty,
+                CreateAt = DateTime.UtcNow,
+                UpdateAt = DateTime.UtcNow,
+                RowVersion = Array.Empty<byte>(),
+            };
+         
+        }
+
+      
+        return new SpaceCloud
+        {
+            MaxBytes = plan switch
+            {
+                "basic" => 5L * 1024 * 1024 * 1024, // 5 GB
+                "pro" => 100L * 1024 * 1024 * 1024, // 100 GB
+                "enterprise" => long.MaxValue, // Unlimited for Enterprise
+                _ => throw new ArgumentException("Invalid plan type")
+            },
+            Id= Guid.NewGuid(), // Generate a new ID for the SpaceCloud
+            UsedBytes = 0,
+            UserId = userId, // This will be set later when the user is created
+            CreateAt = DateTime.UtcNow,
+            UpdateAt = DateTime.UtcNow,
+            RowVersion = Array.Empty<byte>(), // Initialize concurrency token
+        };
     }
 
     //todo to save data

@@ -2,8 +2,8 @@ namespace DTOs.Session;
 
 public class SessionDTO
 {
-    public int Id { get; set; }
-    public int UserId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public string TokenRequest { get; set; } = null!;
     public DateTime ExpireTokenRequest { get; set; }
     public string TokenRefresh { get; set; } = null!;

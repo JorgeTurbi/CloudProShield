@@ -22,7 +22,7 @@ public class UserUpdate_Repository : IUserCommandsUpdate
   {
     try
     {
-      if (userDTO == null || userDTO.Id == 0)
+      if (userDTO == null || userDTO.Id == Guid.Empty)
       {
         return new ApiResponse<bool>(false, "Invalid user data");
       }

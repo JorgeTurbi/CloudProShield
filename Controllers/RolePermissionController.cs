@@ -41,7 +41,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetRolePermissionById")]
-        public async Task<IActionResult> GetRolePermissionById(int rolePermissionId)
+        public async Task<IActionResult> GetRolePermissionById(Guid rolePermissionId)
         {
             ApiResponse<RolesPermissionsDTO> result = await _readRolePermission.GetById(rolePermissionId);
             if (result.Success == false)
@@ -53,7 +53,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetRolesAndPermissions")]
-        public async Task<IActionResult> GetRolesAndPermissions(int userId)
+        public async Task<IActionResult> GetRolesAndPermissions(Guid userId)
         {
             var result = await _readRolePermission.GetRolesAndPermissionsByUserId(userId);
 

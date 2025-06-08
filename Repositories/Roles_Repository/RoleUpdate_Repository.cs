@@ -22,7 +22,7 @@ public class RoleUpdate_Repository : IUpdateCommandRoles
   {
     try
     {
-      if (roleDTO == null || roleDTO.Id == 0)
+      if (roleDTO == null || roleDTO.Id == Guid.Empty || string.IsNullOrWhiteSpace(roleDTO.Name))
       {
         return new ApiResponse<bool>(false, "Invalid role data");
       }

@@ -8,8 +8,8 @@ public class AddressDTOS
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Key]
-    public int Id { get; set; }
-    public int UserId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public int CountryId { get; set; }
     public int StateId { get; set; }
     public string City { get; set; }

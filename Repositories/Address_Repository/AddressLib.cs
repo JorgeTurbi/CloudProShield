@@ -92,7 +92,7 @@ public class AddressLib : IAddress
         }
     }
 
-    public async Task<ApiResponse<bool>> Delete(int id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -135,13 +135,13 @@ public class AddressLib : IAddress
             if (exists == true)
             {
                 _log.LogInformation("Address exists for user {UserId}", user.Id);
-                return new ApiResponse<bool>(true, "Address exists for user {UserId}", user.Id > 0);
+                return new ApiResponse<bool>(true, "Address exists for user {UserId}", user.Id > Guid.Empty);
             }
             else
             {
                 _log.LogInformation("Address does not exist for user {UserId}", user.Id);
                 // Log the absence of the address or handle it as needed
-                return new ApiResponse<bool>(false, "Address does not exist for user {UserId}", user.Id > 0);
+                return new ApiResponse<bool>(false, "Address does not exist for user {UserId}", user.Id > Guid.Empty);
 
             }
         }
@@ -191,7 +191,7 @@ public class AddressLib : IAddress
         }
     }
 
-    public async Task<ApiResponse<AddressDTOS>> GetById(int id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<AddressDTOS>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
 
         try
@@ -248,7 +248,7 @@ public class AddressLib : IAddress
 
 
 
-    public async  Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(int UserId, CancellationToken cancellationToken = default)
+    public async  Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(Guid UserId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -288,5 +288,5 @@ public class AddressLib : IAddress
         }
     }
 
-
+    
 }

@@ -21,7 +21,7 @@ public class PermissionsUpdate_Repository : IUpdateCommandPermissions
   {
     try
     {
-      if (permissionDTO == null || permissionDTO.Id == 0)
+      if (permissionDTO == null || permissionDTO.Id == Guid.Empty || string.IsNullOrWhiteSpace(permissionDTO.Name))
       {
         return new ApiResponse<bool>(false, "Invalid permission data");
       }

@@ -10,7 +10,7 @@ public interface IStorageService
         CancellationToken ct
     );
     Task<(bool ok, string reason)> DeleteFileAsync(
-        int spaceId,
+        Guid spaceId,
         string relativePath,
         long fileBytes,
         CancellationToken ct

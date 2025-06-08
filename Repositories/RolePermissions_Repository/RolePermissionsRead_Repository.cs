@@ -44,7 +44,7 @@ public class RolePermissionsRead_Repository : IReadCommandRolePermissions
     }
   }
 
-  public async Task<ApiResponse<RolesPermissionsDTO>> GetById(int id)
+  public async Task<ApiResponse<RolesPermissionsDTO>> GetById(Guid id)
   {
     try
     {
@@ -66,7 +66,7 @@ public class RolePermissionsRead_Repository : IReadCommandRolePermissions
     }
   }
 
-  public async Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(int userId)
+  public async Task<ApiResponse<List<UserRolePermissionsDTO>>> GetRolesAndPermissionsByUserId(Guid userId)
   {
     try
     {

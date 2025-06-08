@@ -4,7 +4,7 @@ namespace DTOs.UserRolesPermissions
 {
     public class UserRolePermissionsDTO
     {
-        public int RoleId { get; set; }
+        public Guid RoleId { get; set; }
         public string RoleName { get; set; }
         public string RoleDescription { get; set; }
 

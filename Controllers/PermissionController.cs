@@ -41,7 +41,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetPermissionById")]
-        public async Task<IActionResult> GetPermissionById(int permissionId)
+        public async Task<IActionResult> GetPermissionById(Guid permissionId)
         {
             ApiResponse<PermissionsDTO> result = await _readPermission.GetById(permissionId);
             if (result.Success == false)

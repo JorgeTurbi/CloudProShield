@@ -51,7 +51,7 @@ namespace CloudShield.Controllers
         }
 
         [HttpGet("GetByUserId")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(Guid id)
         {
             ApiResponse<AddressDTObyUser> result = await _address.GetAddressbyUserId(id);
             if (result.Success == false) return BadRequest(new { result });
@@ -64,7 +64,7 @@ namespace CloudShield.Controllers
         {
             var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!int.TryParse(idClaim, out var userId))
+            if (!Guid.TryParse(idClaim, out var userId))
                 return Unauthorized(new { message = "Invalid session" });
 
             var result = await _userRead.GetProfile(userId);

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using CloudShield.Entities.Operations;
 
 namespace DTOs.UsersDTOs;
 
@@ -7,7 +8,7 @@ public class UserDTO
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Key]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public required string Name { get; set; }
     public required string SurName { get; set; }
     public DateTime Dob { get; set; }
@@ -21,5 +22,6 @@ public class UserDTO
     public string? Street { get; set; }
     public string? Line { get; set; }
     public required string ZipCode { get; set; }
+    public required string Plan { get; set; }
 
 }

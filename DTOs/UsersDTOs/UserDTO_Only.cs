@@ -7,7 +7,7 @@ public class UserDTO_Only
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Key]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public required string Name { get; set; }
     public required string SurName { get; set; }
     public DateTime Dob { get; set; }

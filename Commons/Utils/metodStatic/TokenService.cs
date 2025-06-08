@@ -40,7 +40,7 @@ public class TokenService : ITokenService
         return tokenHandler.WriteToken(token);
     }
 
-    public string IssueSessionResetToken(int userId, string email, string name, TimeSpan life)
+    public string IssueSessionResetToken(Guid userId, string email, string name, TimeSpan life)
 {
     var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
     var handler = new JwtSecurityTokenHandler();

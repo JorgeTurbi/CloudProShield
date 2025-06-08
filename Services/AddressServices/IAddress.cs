@@ -10,9 +10,9 @@ namespace Services.AddressServices
         
         Task<ApiResponse<bool>> Exists(UserDTO user, CancellationToken cancellationToken = default);
         Task<ApiResponse<bool>> Update(AddressDTOS addressDTO, CancellationToken cancellationToken = default);
-        Task<ApiResponse<bool>> Delete(int id, CancellationToken cancellationToken = default);
-        Task<ApiResponse<AddressDTOS>> GetById(int id, CancellationToken cancellationToken = default);
+        Task<ApiResponse<bool>> Delete(Guid id, CancellationToken cancellationToken = default);
+        Task<ApiResponse<AddressDTOS>> GetById(Guid id, CancellationToken cancellationToken = default);
         Task<ApiResponse<List<AddressDTObyUser>>> GetAll(CancellationToken cancellationToken = default);
-        Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(int UserId, CancellationToken cancellationToken = default);
+        Task<ApiResponse<AddressDTObyUser>> GetAddressbyUserId(Guid UserId, CancellationToken cancellationToken = default);
     }
 }

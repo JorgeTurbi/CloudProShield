@@ -6,7 +6,7 @@ namespace CloudShield.Entities.Entity_Address;
 public class Address : BaseAbstract
 {
 
-      public int UserId { get; set; }
+      public Guid UserId { get; set; }
       public int CountryId { get; set; }
       public int StateId { get; set; }
       public string City { get; set; }

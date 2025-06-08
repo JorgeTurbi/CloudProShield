@@ -6,7 +6,7 @@ public abstract class BaseAbstract
 {
   [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
   [Key]
-  public int Id { get; set; }
+  public Guid Id { get; set; }
   public DateTime CreateAt { get; set; }
   public DateTime UpdateAt { get; set; } 
 }

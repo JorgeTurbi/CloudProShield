@@ -111,7 +111,7 @@ public class UserRead : IUserCommandRead
             return new ApiResponse<string>(false, "An error occurred during login", null);
         }
     }
-    public async Task<ApiResponse<UserDTO_Only>> GetUserById(int id)
+    public async Task<ApiResponse<UserDTO_Only>> GetUserById(Guid id)
     {
         try
         {
@@ -132,7 +132,7 @@ public class UserRead : IUserCommandRead
         }
     }
 
-    public async Task<ApiResponse<UserDTO_Only>> GetProfile(int userId)
+    public async Task<ApiResponse<UserDTO_Only>> GetProfile(Guid userId)
     {
         try
         {

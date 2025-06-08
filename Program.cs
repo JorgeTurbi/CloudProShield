@@ -1,5 +1,6 @@
 using System.Text;
 using CloudShield.Middlewares;
+using CloudShield.Profiles.FileSystem;
 using CloudShield.Repositories.Users;
 using CloudShield.Services.FileSystemRead_Repository;
 using CloudShield.Services.FileSystemServices;
@@ -9,7 +10,6 @@ using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -17,7 +17,6 @@ using RabbitMQ.Client;
 using RabbitMQ.Contracts.Events;
 using RabbitMQ.Integration.Handlers;
 using RabbitMQ.Messaging;
-using RabbitMQ.Messaging.NoOp;
 using RabbitMQ.Messaging.Rabbit;
 using RazorLight;
 using Reponsitories.PermissionsValidate_Repository;
@@ -33,7 +32,6 @@ using Repositories.RoleUpdate_Repository;
 using Repositories.Session_Repository;
 using Repositories.States_Repository;
 using Repositories.Users;
-using Scalar.AspNetCore;
 using Serilog;
 using Services.AddressServices;
 using Services.CountryServices;
@@ -150,9 +148,14 @@ builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
 builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
 builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
 builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
+builder.Services.AddScoped<IStorageServiceUser, LocalDiskStorageServiceUser>();
 builder.Services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
+builder.Services.AddScoped<IFileSystemReadServiceUser, FileSystemRead_RepositoryUser>();
 builder.Services.AddScoped<IFolderProvisioner>(sp =>
     (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
+);
+builder.Services.AddScoped<IFolderProvisionerUser>(sp =>
+    (IFolderProvisionerUser)sp.GetRequiredService<IStorageServiceUser>()
 );
 
 // CONFIGURACIÓN ROBUSTA DE RABBITMQ INTEGRADA
@@ -224,6 +227,7 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(typeof(FileSystemProfile));
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

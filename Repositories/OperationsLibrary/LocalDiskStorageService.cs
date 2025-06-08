@@ -147,7 +147,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     }
 
     public async Task<(bool ok, string reason)> DeleteFileAsync(
-        int spaceId,
+        Guid spaceId,
         string relativePath,
         long fileBytes,
         CancellationToken ct

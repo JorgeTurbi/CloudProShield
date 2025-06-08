@@ -44,7 +44,7 @@ public class PermissionsRead_Repository : IReadCommandPermissions
   }
 
 
-  public async Task<ApiResponse<PermissionsDTO>> GetById(int PermissionId)
+  public async Task<ApiResponse<PermissionsDTO>> GetById(Guid PermissionId)
   {
     try
         {

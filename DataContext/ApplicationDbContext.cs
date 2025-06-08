@@ -1,3 +1,4 @@
+using System;
 using CloudShield.Entities.Entity_Address;
 using CloudShield.Entities.Operations;
 using CloudShield.Entities.Role;
@@ -23,10 +24,16 @@ public class ApplicationDbContext : DbContext
     public DbSet<Space> Spaces => Set<Space>();
     public DbSet<FileResource> FileResources => Set<FileResource>();
 
+    public DbSet<SpaceCloud> SpacesClouds => Set<SpaceCloud>();
+    public DbSet<FileResourceCloud> FileResourcesCloud => Set<FileResourceCloud>();
+
+
+
     //todo model created
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+
         base.OnModelCreating(model);
         /* -------------------- Space -------------------- */
         model.Entity<Space>(e =>
@@ -70,6 +77,48 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(fr => new { fr.SpaceId, fr.RelativePath }).IsUnique();
         });
 
+
+        /* -------------------- Space Cloud -------------------- */
+        model.Entity<SpaceCloud>(e =>
+        {
+            e.ToTable("SpacesClouds");
+
+            // Clave primaria heredada de BaseAbstract
+
+            e.Property(s => s.UserId).IsRequired();
+
+            e.Property(s => s.MaxBytes).IsRequired();
+
+            e.Property(s => s.UsedBytes).IsRequired();
+
+            e.Property(s => s.RowVersion).IsRowVersion(); // marca como token de concurrencia
+
+            // Índice opcional si buscas rápido por CustomerId
+            e.HasIndex(s => s.UserId);
+
+            // Relación 1-N → FileResource
+            e.HasMany(s => s.FileResourcesCloud)
+                .WithOne(fr => fr.Space)
+                .HasForeignKey(fr => fr.SpaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        /* -------------------- FileResourceCloud -------------------- */
+        model.Entity<FileResourceCloud>(e =>
+        {
+            e.ToTable("FileResourcesCloud");
+
+            e.Property(fr => fr.FileName).HasMaxLength(255).IsRequired();
+
+            e.Property(fr => fr.ContentType).HasMaxLength(255).IsRequired();
+
+            e.Property(fr => fr.RelativePath).HasMaxLength(1024).IsRequired();
+
+            e.Property(fr => fr.SizeBytes).IsRequired();
+
+            // Índice único para evitar duplicados dentro de un Space
+            e.HasIndex(fr => new { fr.SpaceId, fr.RelativePath }).IsUnique();
+        });
         //todo Sessions to Users
         model
             .Entity<Sessions>()
@@ -689,11 +738,11 @@ public class ApplicationDbContext : DbContext
         model
             .Entity<Permissions>()
             .HasData(
-                new Permissions { Id = 1, Name = "Write" },
-                new Permissions { Id = 2, Name = "Reader" },
-                new Permissions { Id = 3, Name = "View" },
-                new Permissions { Id = 4, Name = "Delete" },
-                new Permissions { Id = 5, Name = "Update" }
+                new Permissions { Id = Guid.Parse("c5c6f0da-99e2-4e01-8d84-110985a5e5b2"), Name = "Write" },
+                new Permissions { Id = Guid.Parse("1d14a2a4-9f7e-407d-9f6e-95e7c43a9de9"), Name = "Reader" },
+                new Permissions { Id = Guid.Parse("b50eb037-cb39-4f42-bf03-d1738cc21091"), Name = "View" },
+                new Permissions { Id = Guid.Parse("8b7ab1a0-5182-4eb3-a2d7-178da4d31e1c"), Name = "Delete" },
+                new Permissions { Id = Guid.Parse("978b1712-9c5e-48cf-9c4d-6d64d5a88e18"), Name = "Update" }
             );
 
         //todo Role data default
@@ -703,27 +752,30 @@ public class ApplicationDbContext : DbContext
             .HasData(
                 new Role
                 {
-                    Id = 1,
+                    Id = Guid.Parse("e8f35a92-3eae-447c-9cb2-d3e51c5a97c3"),
                     Name = "Administrator",
                     Description =
                         "Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform.",
                 },
                 new Role
                 {
-                    Id = 2,
+                    Id = Guid.Parse("a46e9f62-5373-4aaf-82d4-2b9eb1ad8a2b"),
                     Name = "User",
                     Description =
                         "Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality",
                 }
             );
 
+
+        var userId = Guid.Parse("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7");
+        var spaceCloudId = Guid.Parse("c36f258b-9ad3-4640-9a9b-ff9701dc9f8e");
         //todo User Data Default
         model
             .Entity<User>()
             .HasData(
                 new User
                 {
-                    Id = 1,
+                    Id = userId, // Generate a new GUID for the user ID
                     Name = "Admin",
                     Email = "jturbi@syschar.com",
                     Password = "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
@@ -737,6 +789,19 @@ public class ApplicationDbContext : DbContext
                     Dob = DateTime.MinValue, // Add default value if required
                     ResetPasswordToken = "", // Add default value if required
                     ResetPasswordExpires = DateTime.MinValue, // Add default value if required
+
+                }
+            );
+        model
+            .Entity<SpaceCloud>()
+            .HasData(
+                new SpaceCloud
+                {
+                    Id = spaceCloudId,
+                    UserId = userId,
+                    MaxBytes = 1073741824, // 1 GB
+                    UsedBytes = 0,
+                    RowVersion = new byte[] { }
                 }
             );
     }

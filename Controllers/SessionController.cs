@@ -20,7 +20,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpPut("LogoutAll")]
-        public async Task<IActionResult> LogoutAll(int userId)
+        public async Task<IActionResult> LogoutAll(Guid userId)
         {
             ApiResponse<int> result = await _sessionUpdate.RevokeAllSessions(userId);
 
@@ -64,7 +64,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetSessionById")]
-        public async Task<IActionResult> GetSessionById(int sessionId)
+        public async Task<IActionResult> GetSessionById(Guid sessionId)
         {
             ApiResponse<SessionDTO> result = await _sessionRead.GetById(sessionId);
 
@@ -77,7 +77,7 @@ namespace CloudProShield.Controllers
         }
 
         [HttpGet("GetSessionByUserId")]
-        public async Task<IActionResult> GetSessionByUserId(int userId)
+        public async Task<IActionResult> GetSessionByUserId(Guid userId)
         {
             ApiResponse<List<SessionDTO>> result = await _sessionRead.GetByUserId(userId);
 

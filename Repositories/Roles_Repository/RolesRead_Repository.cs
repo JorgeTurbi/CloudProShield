@@ -44,7 +44,7 @@ public class RolesRead_Repository : IReadCommandRoles
         }
     }
 
-    public async Task<ApiResponse<RolesDTO>> GetbyId(int RoleId)
+    public async Task<ApiResponse<RolesDTO>> GetbyId(Guid RoleId)
     {
         try
         {
@@ -65,7 +65,7 @@ public class RolesRead_Repository : IReadCommandRoles
         }
     }
 
-    public async Task<ApiResponse<RolesDTO>> GetByUserId(int UserId)
+    public async Task<ApiResponse<RolesDTO>> GetByUserId(Guid UserId)
     {
         try
         {

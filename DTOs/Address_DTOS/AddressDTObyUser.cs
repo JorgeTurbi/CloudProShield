@@ -8,7 +8,7 @@ public class AddressDTObyUser
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Key]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string User { get; set; }
     public string Country { get; set; }
     public string State { get; set; }
