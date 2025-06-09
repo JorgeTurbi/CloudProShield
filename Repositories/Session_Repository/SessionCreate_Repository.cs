@@ -32,6 +32,12 @@ namespace Session_Repository
         if (user is null)
           return new ApiResponse<SessionDTO>(false, "User not found");
 
+        if (!user.IsActive)
+          return new ApiResponse<SessionDTO>(false, "User account is inactive.");
+
+        if (!user.IsActive)
+          return new ApiResponse<SessionDTO>(false, "User account has not been confirmed.");
+
         var token = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(1));
         var tokenRefresh = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(7));
 

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250602004109_InitialMigrations")]
-    partial class InitialMigrations
+    [Migration("20250609134336_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -27,11 +27,9 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("CloudShield.Entities.Entity_Address.Address", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("City")
                         .IsRequired()
@@ -57,8 +55,8 @@ namespace CloudShield.Migrations
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ZipCode")
                         .IsRequired()
@@ -79,11 +77,9 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("CloudShield.Entities.Operations.FileResource", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
@@ -106,8 +102,8 @@ namespace CloudShield.Migrations
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SpaceId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("datetime2");
@@ -120,13 +116,52 @@ namespace CloudShield.Migrations
                     b.ToTable("FileResources", (string)null);
                 });
 
+            modelBuilder.Entity("CloudShield.Entities.Operations.FileResourceCloud", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("CreateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId", "RelativePath")
+                        .IsUnique();
+
+                    b.ToTable("FileResourcesCloud", (string)null);
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Operations.Space", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
@@ -156,13 +191,58 @@ namespace CloudShield.Migrations
                     b.ToTable("Spaces", (string)null);
                 });
 
+            modelBuilder.Entity("CloudShield.Entities.Operations.SpaceCloud", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("MaxBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("UsedBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("SpacesClouds", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c36f258b-9ad3-4640-9a9b-ff9701dc9f8e"),
+                            CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            MaxBytes = 1073741824L,
+                            RowVersion = new byte[0],
+                            UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsedBytes = 0L,
+                            UserId = new Guid("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7")
+                        });
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Role.Permissions", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
@@ -183,35 +263,35 @@ namespace CloudShield.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = new Guid("c5c6f0da-99e2-4e01-8d84-110985a5e5b2"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Write",
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
-                            Id = 2,
+                            Id = new Guid("1d14a2a4-9f7e-407d-9f6e-95e7c43a9de9"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Reader",
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
-                            Id = 3,
+                            Id = new Guid("b50eb037-cb39-4f42-bf03-d1738cc21091"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "View",
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
-                            Id = 4,
+                            Id = new Guid("8b7ab1a0-5182-4eb3-a2d7-178da4d31e1c"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Delete",
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
-                            Id = 5,
+                            Id = new Guid("978b1712-9c5e-48cf-9c4d-6d64d5a88e18"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Update",
                             UpdateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -220,11 +300,9 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("CloudShield.Entities.Role.Role", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
@@ -247,7 +325,7 @@ namespace CloudShield.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = new Guid("e8f35a92-3eae-447c-9cb2-d3e51c5a97c3"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Has full access to all system features, settings, and user management. Responsible for maintaining and overseeing the platform.",
                             Name = "Administrator",
@@ -255,7 +333,7 @@ namespace CloudShield.Migrations
                         },
                         new
                         {
-                            Id = 2,
+                            Id = new Guid("a46e9f62-5373-4aaf-82d4-2b9eb1ad8a2b"),
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Has limited access to the system, can view and interact with allowed features based on their permissions. Typically focuses on using the core functionality",
                             Name = "User",
@@ -265,26 +343,24 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("CloudShield.Entities.Role.RolePermissions", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("PermissionsId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("PermissionsId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -1478,11 +1554,9 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("Entities.Users.Sessions", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreateAt")
                         .HasColumnType("datetime2");
@@ -1519,8 +1593,8 @@ namespace CloudShield.Migrations
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -1861,11 +1935,9 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("Entities.Users.User", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Confirm")
                         .HasColumnType("bit");
@@ -1927,7 +1999,7 @@ namespace CloudShield.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = new Guid("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7"),
                             Confirm = true,
                             ConfirmToken = "",
                             CreateAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
@@ -1984,6 +2056,26 @@ namespace CloudShield.Migrations
                     b.Navigation("Space");
                 });
 
+            modelBuilder.Entity("CloudShield.Entities.Operations.FileResourceCloud", b =>
+                {
+                    b.HasOne("CloudShield.Entities.Operations.SpaceCloud", "Space")
+                        .WithMany("FileResourcesCloud")
+                        .HasForeignKey("SpaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Space");
+                });
+
+            modelBuilder.Entity("CloudShield.Entities.Operations.SpaceCloud", b =>
+                {
+                    b.HasOne("Entities.Users.User", null)
+                        .WithOne("SpaceCloud")
+                        .HasForeignKey("CloudShield.Entities.Operations.SpaceCloud", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Role.RolePermissions", b =>
                 {
                     b.HasOne("CloudShield.Entities.Role.Permissions", "Permissions")
@@ -2038,6 +2130,11 @@ namespace CloudShield.Migrations
                     b.Navigation("FileResources");
                 });
 
+            modelBuilder.Entity("CloudShield.Entities.Operations.SpaceCloud", b =>
+                {
+                    b.Navigation("FileResourcesCloud");
+                });
+
             modelBuilder.Entity("CloudShield.Entities.Role.Permissions", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -2069,6 +2166,8 @@ namespace CloudShield.Migrations
                     b.Navigation("RolePermissions");
 
                     b.Navigation("Sessions");
+
+                    b.Navigation("SpaceCloud");
                 });
 #pragma warning restore 612, 618
         }
