@@ -18,14 +18,16 @@ public class UserRead : IUserCommandRead
     private readonly ILogger<UserRead> _log;
     private readonly IEmailService _emailService;
     private readonly ISessionCommandCreate _sessionCreate;
+    private readonly IUserValidationService _userValidation;
 
-    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, IEmailService emailService)
+    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, IEmailService emailService, IUserValidationService userValidation)
     {
         _context = context;
         _mapper = mapper;
         _log = log;
         _sessionCreate = sessionCreate;
         _emailService = emailService;
+        _userValidation = userValidation;
     }
 
     public async Task<ApiResponse<List<UserDTO_Only>>> GetAllUsers()
@@ -74,40 +76,46 @@ public class UserRead : IUserCommandRead
     {
         try
         {
+            // 1. Validar usuario usando el servicio de validación
+            var userValidation = await _userValidation.ValidateUserForLogin(userLoginDTO.Email, userLoginDTO.Password);
 
-            var user = await _context.User.FirstOrDefaultAsync(u => u.Email == userLoginDTO.Email);
-            if (user == null)
+            if (!userValidation.Success)
             {
-                return new ApiResponse<string>(false, "Invalid email or password", null);
-            }
-            bool veryfyPassword = PasswordHasher.VerifyPassword(user.Password, userLoginDTO.Password);
-            if (!veryfyPassword)
-            {
-                return new ApiResponse<string>(false, "Invalid email or password", null);
+                // Log del intento de login fallido para seguridad
+                _log.LogWarning("Failed login attempt for email: {Email} from IP: {IP}", userLoginDTO.Email, ipAddress);
+                return new ApiResponse<string>(false, userValidation.Message, null);
             }
 
-            // Generamos El token a 1 dia
-            var userDTO = _mapper.Map<UserDTO>(user);
+            var user = userValidation.Data;
 
-            // Enviar notificación de inicio de sesión
-            await _emailService.SendLoginNotificationAsync(
-                user.Email,
-                ipAddress,
-                device);
-
+            // 2. Crear sesión (aquí también se valida nuevamente en SessionCreate_Repository)
             var sessionResponse = await _sessionCreate.CreateSession(user.Id, ipAddress, device);
 
             if (!sessionResponse.Success)
             {
+                _log.LogError("Failed to create session for user: {UserId}", user.Id);
                 return new ApiResponse<string>(false, "Failed to create session", null);
             }
 
-            // Assuming you want to return a token or some identifier upon successful login
+            // 3. Enviar notificación de inicio de sesión (solo si todo es exitoso)
+            try
+            {
+                await _emailService.SendLoginNotificationAsync(user.Email, ipAddress, device);
+            }
+            catch (Exception emailEx)
+            {
+                // No fallar el login si el email no se puede enviar
+                _log.LogWarning(emailEx, "Failed to send login notification email to {Email}", user.Email);
+            }
+
+            // 4. Log del login exitoso
+            _log.LogInformation("Successful login for user: {Email} from IP: {IP}", user.Email, ipAddress);
+
             return new ApiResponse<string>(true, "Login successful", sessionResponse.Data.TokenRequest);
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Error during user login");
+            _log.LogError(ex, "Error during user login for email: {Email}", userLoginDTO.Email);
             return new ApiResponse<string>(false, "An error occurred during login", null);
         }
     }

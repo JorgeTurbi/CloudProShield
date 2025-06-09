@@ -33,6 +33,9 @@ namespace CloudShield.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Add([FromBody] UserDTO user)
         {
+            if (user == null)
+                return BadRequest(new { message = "Invalid user data" });
+
             string originUrl = Request.Headers["Origin"].ToString();
             ApiResponse<bool> result = await _user.AddNew(user, originUrl);
 
@@ -76,12 +79,19 @@ namespace CloudShield.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
         {
-            if (userLoginDTO == null) return BadRequest("Invalid login request");
+            if (userLoginDTO == null)
+                return BadRequest(new ApiResponse<string>(false, "Invalid login request"));
 
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
             string device = HttpContext.Request.Headers["User-Agent"].ToString() ?? string.Empty;
 
             ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO, ipAddress, device);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
             return Ok(result);
         }
 

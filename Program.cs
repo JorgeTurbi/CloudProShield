@@ -124,6 +124,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAddress, AddressLib>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
 builder.Services.AddScoped<IUserCommandRead, UserRead>();
+builder.Services.AddScoped<IUserValidationService, UserValidation_Repository>();
 builder.Services.AddScoped<IValidateRoles, RolesValidate_Repository>();
 builder.Services.AddScoped<ICreateCommandRoles, RolesLib>();
 builder.Services.AddScoped<IReadCommandRoles, RolesRead_Repository>();
