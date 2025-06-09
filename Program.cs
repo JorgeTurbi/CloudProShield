@@ -47,6 +47,9 @@ using Session_Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Elimina los loggers predeterminados de ASP.NET Core
+builder.Logging.ClearProviders(); 
+
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
 if (!Directory.Exists(logFolderPath))
 {
@@ -56,14 +59,14 @@ if (!Directory.Exists(logFolderPath))
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    // .WriteTo.Console()
     .WriteTo.File(
         Path.Combine(logFolderPath, "LogsApplication-.txt"),
         rollingInterval: RollingInterval.Day
     )
     .CreateLogger();
 
-builder.Host.UseSerilog();
+builder.Host.UseSerilog(Log.Logger, dispose: true);
 
 // ✅ MOSTRAR INFORMACIÓN DE INICIO TEMPRANO
 Console.WriteLine("🚀 Iniciando CloudProShield API...");
