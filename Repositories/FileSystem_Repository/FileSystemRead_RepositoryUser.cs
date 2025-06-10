@@ -247,9 +247,9 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
           .Include(s => s.FileResourcesCloud)
           .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
 
-         _logger.LogInformation(
-          "Archivos Con Informacion de usuario {UserId} solicitados",
-         space.ToString());
+      _logger.LogInformation(
+       "Archivos Con Informacion de usuario {UserId} solicitados",
+      space.ToString());
 
       if (space == null)
       {
@@ -258,8 +258,8 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
             "No se encontró espacio para el cliente",
             new List<FileItemDTO>());
       }
-      
-    
+
+
       var fileItemDTOs = _mapper.Map<List<FileItemDTO>>(space.FileResourcesCloud.ToList());
       if (fileItemDTOs == null || fileItemDTOs.Count == 0)
       {
@@ -288,16 +288,93 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     }
   }
 
-    public async Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(Guid UserId, CancellationToken ct = default)
+  public async Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(Guid UserId, CancellationToken ct = default)
+  {
+    var space = await _context.SpacesClouds
+      .AsNoTracking()
+      .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
+
+    return space == null
+      ? await Task.FromResult(new ApiResponse<SpaceCloud>(false, "No se encontró espacio para el cliente", null))
+      : await Task.FromResult(new ApiResponse<SpaceCloud>(true, "Espacio encontrado", space));
+
+    throw new NotImplementedException();
+  }
+
+  public async Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(Guid UserId, CancellationToken ct = default)
+  {
+    try
     {
-        var space = await _context.SpacesClouds
+      var space = await _context.SpacesClouds
           .AsNoTracking()
+          .Include(s => s.FileResourcesCloud)
           .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
 
-          return space == null
-            ? await Task.FromResult(new  ApiResponse<SpaceCloud>(false, "No se encontró espacio para el cliente", null))
-            : await Task.FromResult(new ApiResponse<SpaceCloud>(true, "Espacio encontrado", space));
+      _logger.LogInformation(
+       "Explorando contenido de carpeta para usuario {UserId}",
+       space.FileResourcesCloud);
 
-        throw new NotImplementedException();
+      if (space == null)
+      {
+        return new ApiResponse<FolderContentDTO>(
+            false,
+            "No se encontró espacio para el usuario",
+            null);
+      }
+
+      // Construir la ruta base de almacenamiento
+      var customerPath = Path.Combine(_rootPath, UserId.ToString("N")).Replace("\\", "/");
+
+
+      // Filtrar archivos que están dentro de esa ruta base
+
+   
+      var filesInFolder = space.FileResourcesCloud.ToList();
+      if (filesInFolder == null)
+      {
+        return new ApiResponse<FolderContentDTO>(
+            false,
+            "No se encontró folders para el usuario",
+            null);
+      }
+
+
+      // Construir lista de archivos DTO
+      var fileItems = filesInFolder.Select(f => new FileItemDTO
+      {
+        Id = f.Id,
+        FileName = f.FileName,
+        ContentType = f.ContentType,
+        RelativePath = f.RelativePath,
+        SizeBytes = f.SizeBytes,
+        CreatedAt = f.CreateAt,
+        UpdatedAt = f.UpdateAt,
+        Category = "" // o asigna si tienes esta propiedad en la BD
+      }).ToList();
+
+      // Construir respuesta final
+      var folderContent = new FolderContentDTO
+      {
+        FolderName = "root",
+        FolderPath = customerPath,
+        Files = fileItems,
+        TotalFiles = fileItems.Count,
+        TotalSizeBytes = fileItems.Sum(f => f.SizeBytes)
+      };
+
+      return new ApiResponse<FolderContentDTO>(
+          true,
+          "Contenido de carpeta explorado correctamente",
+          folderContent);
     }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al obtener contenido de carpeta para usuario {UserId}", UserId);
+      return new ApiResponse<FolderContentDTO>(
+          false,
+          "Error interno al obtener contenido de carpeta",
+          null);
+    }
+  }
+
 }

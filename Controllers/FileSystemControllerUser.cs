@@ -227,4 +227,65 @@ public class FileSystemControllerUser : ControllerBase
       return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
     }
   }
+
+
+ /// <summary>
+  /// Obtiene todos los archivos de un usuario independientemente de la carpeta
+  /// </summary>
+  /// <param name="userId">ID del usuario</param>
+  /// <param name="ct">Token de cancelación</param>
+  /// <returns>Lista de todos los  como si fuese un explorador </returns>
+
+  [HttpGet("explore/folders")]
+  [AllowAnonymous]
+  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status200OK)]
+  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
+  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
+  public async Task<IActionResult> GetAllExplore(
+      Guid userId,
+      CancellationToken ct = default)
+  {
+
+    try
+    {
+      _logger.LogInformation("Solicitando carpetas  {UserId}", userId);
+
+      var result = await _fileSystemService.GetFolderContentExploreAsync(userId, ct);
+
+      if (!result.Success)
+      {
+        return NotFound(result);
+      }
+
+      return Ok(result);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error no controlado al obtener carpetas {UserId}", userId);
+      var errorResponse = new ApiResponse<FolderContentDTO>(
+          false,
+          "Error interno del servidor");
+      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+    }
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
