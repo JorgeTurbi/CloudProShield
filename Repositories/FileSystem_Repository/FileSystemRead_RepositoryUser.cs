@@ -311,8 +311,8 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
           .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
 
       _logger.LogInformation(
-       "Explorando contenido de carpeta para usuario {UserId}",
-       space.FileResourcesCloud);
+          "Explorando contenido de carpeta para usuario {UserId}",
+          UserId);
 
       if (space == null)
       {
@@ -325,21 +325,19 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       // Construir la ruta base de almacenamiento
       var customerPath = Path.Combine(_rootPath, UserId.ToString("N")).Replace("\\", "/");
 
-
-      // Filtrar archivos que están dentro de esa ruta base
-
-   
-      var filesInFolder = space.FileResourcesCloud.ToList();
-      if (filesInFolder == null)
+      // Obtener carpetas (subcarpetas) directamente dentro de la ruta base
+      var folderPaths = Directory.GetDirectories(customerPath);
+      var folderItems = folderPaths.Select(folderPath => new FolderItemDTO
       {
-        return new ApiResponse<FolderContentDTO>(
-            false,
-            "No se encontró folders para el usuario",
-            null);
-      }
+        Name = Path.GetFileName(folderPath),
+        RelativePath = folderPath.Replace(_rootPath, "").TrimStart('/'),
+        CreatedAt = Directory.GetCreationTime(folderPath),
+        UpdatedAt = Directory.GetLastWriteTime(folderPath)
+      }).ToList();
 
+      // Obtener archivos que están dentro de esa ruta base
+      var filesInFolder = space.FileResourcesCloud.ToList();
 
-      // Construir lista de archivos DTO
       var fileItems = filesInFolder.Select(f => new FileItemDTO
       {
         Id = f.Id,
@@ -357,6 +355,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       {
         FolderName = "root",
         FolderPath = customerPath,
+        Folders = folderItems,
         Files = fileItems,
         TotalFiles = fileItems.Count,
         TotalSizeBytes = fileItems.Sum(f => f.SizeBytes)
