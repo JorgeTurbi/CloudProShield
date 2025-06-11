@@ -81,17 +81,18 @@ public class UserLib : IUserCommandCreate, ISaveServices
             ResetPasswordExpires = DateTime.MinValue,
             Otp = string.Empty, // Initialize to avoid null issues
             OtpExpires = DateTime.MinValue,
-            SpaceCloud= userDTO.Plan != null
-                ? await ValidatePlan(userDTO.Plan, userDTO.Id)
-                : new SpaceCloud
-                {
-                    MaxBytes = 0,
-                    UsedBytes = 0,
-                    UserId = Guid.Empty,
-                    CreateAt = DateTime.UtcNow,
-                    UpdateAt = DateTime.UtcNow,
-                    RowVersion = Array.Empty<byte>(),
-                },
+            SpaceCloud =
+                userDTO.Plan != null
+                    ? await ValidatePlan(userDTO.Plan, userDTO.Id)
+                    : new SpaceCloud
+                    {
+                        MaxBytes = 0,
+                        UsedBytes = 0,
+                        UserId = Guid.Empty,
+                        CreateAt = DateTime.UtcNow,
+                        UpdateAt = DateTime.UtcNow,
+                        RowVersion = Array.Empty<byte>(),
+                    },
         };
 
         try
@@ -138,7 +139,6 @@ public class UserLib : IUserCommandCreate, ISaveServices
         }
     }
 
-
     private async Task<SpaceCloud> ValidatePlan(string plan, Guid userId)
     {
         //todo validate if user is null
@@ -154,10 +154,8 @@ public class UserLib : IUserCommandCreate, ISaveServices
                 UpdateAt = DateTime.UtcNow,
                 RowVersion = Array.Empty<byte>(),
             };
-         
         }
 
-      
         return new SpaceCloud
         {
             MaxBytes = plan switch
@@ -165,9 +163,9 @@ public class UserLib : IUserCommandCreate, ISaveServices
                 "basic" => 5L * 1024 * 1024 * 1024, // 5 GB
                 "pro" => 100L * 1024 * 1024 * 1024, // 100 GB
                 "enterprise" => long.MaxValue, // Unlimited for Enterprise
-                _ => throw new ArgumentException("Invalid plan type")
+                _ => throw new ArgumentException("Invalid plan type"),
             },
-            Id= Guid.NewGuid(), // Generate a new ID for the SpaceCloud
+            Id = Guid.NewGuid(), // Generate a new ID for the SpaceCloud
             UsedBytes = 0,
             UserId = userId, // This will be set later when the user is created
             CreateAt = DateTime.UtcNow,
@@ -270,6 +268,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
 
             user.Confirm = true;
             user.IsActive = true;
+            user.UpdateAt = DateTime.Now;
 
             _context.User.Update(user);
             bool result = await Save();

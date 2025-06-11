@@ -66,6 +66,7 @@ public class AddressLib : IAddress
             }
             // Map the AddressDTO to Address entity
             var address = _mapper.Map<Address>(addressDTO);
+            address.CreateAt = DateTime.Now;
             // Add the address to the database
             await _context.Address.AddAsync(address);
             // Save changes to the database

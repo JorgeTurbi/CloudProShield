@@ -4,11 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace DTOs.Roles;
 
 public class RolesDTO
-
 {
-    
     [Key]
     public Guid Id { get; set; }
-    public string Name { get; set; }
-    public string Description { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
 }

@@ -4,6 +4,7 @@ using DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250611025122_FixAddressStateRelationship")]
+    partial class FixAddressStateRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -39,12 +42,14 @@ namespace CloudShield.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Line")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("StateId")
                         .HasColumnType("int");
 
                     b.Property<string>("Street")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdateAt")
@@ -54,6 +59,7 @@ namespace CloudShield.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ZipCode")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -244,7 +250,6 @@ namespace CloudShield.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdateAt")
@@ -302,6 +307,7 @@ namespace CloudShield.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
@@ -1555,6 +1561,7 @@ namespace CloudShield.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Device")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("ExpireTokenRefresh")
@@ -1571,9 +1578,11 @@ namespace CloudShield.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Location")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TokenRefresh")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TokenRequest")
@@ -1954,6 +1963,7 @@ namespace CloudShield.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Otp")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("OtpExpires")
@@ -1971,9 +1981,11 @@ namespace CloudShield.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ResetPasswordToken")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SurName")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdateAt")
@@ -1981,7 +1993,7 @@ namespace CloudShield.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("User");
 
                     b.HasData(
                         new
@@ -2146,7 +2158,8 @@ namespace CloudShield.Migrations
 
             modelBuilder.Entity("Entities.Users.User", b =>
                 {
-                    b.Navigation("Address");
+                    b.Navigation("Address")
+                        .IsRequired();
 
                     b.Navigation("RolePermissions");
 

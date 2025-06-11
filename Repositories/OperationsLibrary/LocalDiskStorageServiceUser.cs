@@ -43,6 +43,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
                 UserId = customerId,
                 MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
                 UsedBytes = 0,
+                CreateAt = DateTime.UtcNow
             };
             await _db.SpacesClouds.AddAsync(space, ct);
             await _db.SaveChangesAsync(ct);

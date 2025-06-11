@@ -43,6 +43,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
                 CustomerId = customerId,
                 MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
                 UsedBytes = 0,
+                CreateAt = DateTime.UtcNow
             };
             await _db.Spaces.AddAsync(space, ct);
             await _db.SaveChangesAsync(ct);
