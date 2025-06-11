@@ -35,6 +35,10 @@ public class ApplicationDbContext : DbContext
     {
 
         base.OnModelCreating(model);
+
+        /* -------------------- Cambiamos User a Users para evitar conflictos en SqlServer -------------------- */
+        model.Entity<User>().ToTable("Users");
+
         /* -------------------- Space -------------------- */
         model.Entity<Space>(e =>
         {

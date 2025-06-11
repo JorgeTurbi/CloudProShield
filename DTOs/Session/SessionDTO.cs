@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace DTOs.Session;
 
 public class SessionDTO
 {
+    [Key]
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string TokenRequest { get; set; } = null!;

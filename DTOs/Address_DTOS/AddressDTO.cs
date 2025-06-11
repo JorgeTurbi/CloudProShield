@@ -12,8 +12,8 @@ public class AddressDTOS
     public Guid UserId { get; set; }
     public int CountryId { get; set; }
     public int StateId { get; set; }
-    public string City { get; set; }
-    public string Street { get; set; }
-    public string Line { get; set; }
-    public string ZipCode { get; set; }
+    public required string City { get; set; }
+    public string? Street { get; set; }
+    public string? Line { get; set; }
+    public string? ZipCode { get; set; }
 }
