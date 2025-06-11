@@ -1,10 +1,7 @@
 using System.Text;
 using CloudShield.Middlewares;
 using CloudShield.Profiles.FileSystem;
-using CloudShield.Repositories.Users;
-using CloudShield.Services.FileSystemRead_Repository;
-using CloudShield.Services.FileSystemServices;
-using CloudShield.Services.OperationStorage;
+using CloudShield.Repositories.Extensions;
 using Commons.Utils;
 using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,36 +16,12 @@ using RabbitMQ.Integration.Handlers;
 using RabbitMQ.Messaging;
 using RabbitMQ.Messaging.Rabbit;
 using RazorLight;
-using Reponsitories.PermissionsValidate_Repository;
-using Reponsitories.Roles_Repository;
-using Repositories.Address_Repository;
-using Repositories.CountriesRepository;
-using Repositories.Permissions_Repository;
-using Repositories.PermissionsDelete_Repository;
-using Repositories.PermissionsUpdate_Repository;
-using Repositories.RolePermissions_Repository;
-using Repositories.Roles_Repository;
-using Repositories.RoleUpdate_Repository;
-using Repositories.Session_Repository;
-using Repositories.States_Repository;
-using Repositories.Users;
 using Serilog;
-using Services.AddressServices;
-using Services.CountryServices;
-using Services.EmailServices;
-using Services.Permissions;
-using Services.RolePermissions;
-using Services.Roles;
-using Services.SessionServices;
-using Services.StateServices;
-using Services.TokenServices;
-using Services.UserServices;
-using Session_Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Elimina los loggers predeterminados de ASP.NET Core
-builder.Logging.ClearProviders(); 
+builder.Logging.ClearProviders();
 
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
 if (!Directory.Exists(logFolderPath))
@@ -120,47 +93,7 @@ builder
 builder.Services.AddAuthorization();
 
 //todo services configuration
-builder.Services.AddScoped<IUserCommandCreate, UserLib>();
-builder.Services.AddScoped<IUserCommandsUpdate, UserUpdate_Repository>();
-builder.Services.AddScoped<IUserCommandDelete, UserDelete_Repository>();
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IAddress, AddressLib>();
-builder.Services.AddScoped<IUserCommandRead, UserRead>();
-builder.Services.AddScoped<IUserCommandRead, UserRead>();
-builder.Services.AddScoped<IUserValidationService, UserValidation_Repository>();
-builder.Services.AddScoped<IValidateRoles, RolesValidate_Repository>();
-builder.Services.AddScoped<ICreateCommandRoles, RolesLib>();
-builder.Services.AddScoped<IReadCommandRoles, RolesRead_Repository>();
-builder.Services.AddScoped<IUpdateCommandRoles, RoleUpdate_Repository>();
-builder.Services.AddScoped<IDeleteCommandRole, RolesDelete_Repository>();
-builder.Services.AddScoped<IValidatePermissions, PermissionsValidate_Repository>();
-builder.Services.AddScoped<IReadCommandPermissions, PermissionsRead_Repository>();
-builder.Services.AddScoped<ICreateCommandPermissions, PermissionsLib>();
-builder.Services.AddScoped<IUpdateCommandPermissions, PermissionsUpdate_Repository>();
-builder.Services.AddScoped<IDeleteCommandPermissions, PermissionsDelete_Repository>();
-builder.Services.AddScoped<IReadCommandRolePermissions, RolePermissionsRead_Repository>();
-builder.Services.AddScoped<IUpdateCommandRolePermissions, RolePermissionsUpdate_Repository>();
-builder.Services.AddScoped<ICreateCommandRolePermissions, RolePermissionsLib>();
-builder.Services.AddScoped<IDeleteCommandRolePermissions, RolePermissionsDelete_Repository>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<UserPassword_Repository>();
-builder.Services.AddScoped<IUserForgotPassword, UserForgotPassword_Repository>();
-builder.Services.AddScoped<ISessionCommandCreate, SessionCreate_Repository>();
-builder.Services.AddScoped<ISessionCommandRead, SessionRead_Repository>();
-builder.Services.AddScoped<ISessionCommandUpdate, SessionUpdate_Repository>();
-builder.Services.AddScoped<IReadCommandCountries, CountriesRead_Repository>();
-builder.Services.AddScoped<IReadCommandStates, StatesRead_Repository>();
-builder.Services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
-builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
-builder.Services.AddScoped<IStorageServiceUser, LocalDiskStorageServiceUser>();
-builder.Services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
-builder.Services.AddScoped<IFileSystemReadServiceUser, FileSystemRead_RepositoryUser>();
-builder.Services.AddScoped<IFolderProvisioner>(sp =>
-    (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
-);
-builder.Services.AddScoped<IFolderProvisionerUser>(sp =>
-    (IFolderProvisionerUser)sp.GetRequiredService<IStorageServiceUser>()
-);
+builder.Services.AddCustomRepostories();
 
 // CONFIGURACIÓN ROBUSTA DE RABBITMQ INTEGRADA
 var rabbitMQEnabled = builder.Configuration.GetValue<bool>("RabbitMQ:Enabled", true);
@@ -178,12 +111,17 @@ if (rabbitMQEnabled)
             UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest",
             Password = builder.Configuration["RabbitMQ:Password"] ?? "guest",
             RequestedConnectionTimeout = TimeSpan.FromSeconds(5),
-            RequestedHeartbeat = TimeSpan.FromSeconds(10)
+            RequestedHeartbeat = TimeSpan.FromSeconds(10),
         };
 
         using var testConnection = factory.CreateConnection();
         using var testChannel = testConnection.CreateModel();
-        testChannel.ExchangeDeclare("startup-test", ExchangeType.Direct, durable: false, autoDelete: true);
+        testChannel.ExchangeDeclare(
+            "startup-test",
+            ExchangeType.Direct,
+            durable: false,
+            autoDelete: true
+        );
 
         isRabbitMQAvailable = true;
         builder.Services.AddSingleton<IEventBus, EventBusRabbitMq>();
@@ -214,9 +152,6 @@ else
         return new NoOpEventBus(logger);
     });
 }
-
-// Handlers
-builder.Services.AddScoped<CustomerCreatedEventHandler>();
 
 builder.Services.AddSingleton(sp =>
 {
@@ -297,6 +232,9 @@ try
     if (bus is EventBusRabbitMq)
     {
         bus.Subscribe<CustomerCreatedEvent, CustomerCreatedEventHandler>("CustomerCreatedEvent");
+        bus.Subscribe<AccountRegisteredEvent, AccountRegisteredEventHandler>(
+            "AccountRegisteredEvent"
+        );
     }
 }
 catch (Exception ex)
@@ -340,29 +278,44 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ✅ HEALTH CHECK ENDPOINTS
-app.MapGet("/health", () => Results.Ok(new
-{
-    status = "Healthy",
-    timestamp = DateTime.UtcNow,
-    rabbitmq = app.Services.GetRequiredService<IEventBus>() is EventBusRabbitMq ? "Connected" : "Disabled/Unavailable"
-}));
+app.MapGet(
+    "/health",
+    () =>
+        Results.Ok(
+            new
+            {
+                status = "Healthy",
+                timestamp = DateTime.UtcNow,
+                rabbitmq = app.Services.GetRequiredService<IEventBus>() is EventBusRabbitMq
+                    ? "Connected"
+                    : "Disabled/Unavailable",
+            }
+        )
+);
 
-app.MapGet("/health/rabbitmq", () =>
-{
-    var bus = app.Services.GetRequiredService<IEventBus>();
-    if (bus is EventBusRabbitMq)
+app.MapGet(
+    "/health/rabbitmq",
+    () =>
     {
-        return Results.Ok(new { status = "Healthy", message = "RabbitMQ connected" });
+        var bus = app.Services.GetRequiredService<IEventBus>();
+        if (bus is EventBusRabbitMq)
+        {
+            return Results.Ok(new { status = "Healthy", message = "RabbitMQ connected" });
+        }
+        return Results.Json(
+            new { status = "Unavailable", message = "RabbitMQ not available" },
+            statusCode: 503
+        );
     }
-    return Results.Json(new { status = "Unavailable", message = "RabbitMQ not available" }, statusCode: 503);
-});
+);
 
 // ✅ MENSAJES DE INICIO PROMINENTES
 Console.WriteLine("\n" + new string('=', 60));
 Console.WriteLine("🌟 CLOUDPROSHIELD API INICIADA EXITOSAMENTE");
 Console.WriteLine(new string('=', 60));
 
-var urls = builder.Configuration["ASPNETCORE_URLS"]?.Split(';') ?? new[] { "http://localhost:5009" };
+var urls =
+    builder.Configuration["ASPNETCORE_URLS"]?.Split(';') ?? new[] { "http://localhost:5009" };
 foreach (var url in urls)
 {
     Console.WriteLine($"🌐 Servidor disponible en: {url}");
@@ -380,11 +333,13 @@ if (app.Environment.IsDevelopment())
 
     try
     {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = swaggerUrl,
-            UseShellExecute = true
-        });
+        System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = swaggerUrl,
+                UseShellExecute = true,
+            }
+        );
         Console.WriteLine($"🚀 Abriendo Swagger automáticamente: {swaggerUrl}");
     }
     catch

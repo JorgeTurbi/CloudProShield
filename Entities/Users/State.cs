@@ -12,5 +12,5 @@ public class State
     public int CountryId { get; set; }
     public string Name { get; set; }
     public virtual Country Country { get; set; }
-    public virtual Address Address { get; set; }
+    public ICollection<Address> Address { get; set; } = new List<Address>();
 }

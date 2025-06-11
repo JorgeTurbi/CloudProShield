@@ -171,8 +171,8 @@ public class ApplicationDbContext : DbContext
         model
             .Entity<Address>()
             .HasOne(u => u.State)
-            .WithOne(a => a.Address)
-            .HasForeignKey<Address>(a => a.StateId)
+            .WithMany(a => a.Address)
+            .HasForeignKey(a => a.StateId)
             .OnDelete(DeleteBehavior.NoAction);
 
         //todo state to country

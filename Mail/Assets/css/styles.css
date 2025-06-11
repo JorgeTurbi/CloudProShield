@@ -21,11 +21,10 @@ body, html {
 
 /* Encabezado */
 .header {
-  text-align: center;
-  padding: 15px 20px;
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-  color: white;
-  border-bottom: none;
+  text-align:center;
+  padding:30px 20px;        /* ← más alto */
+  background:linear-gradient(135deg,#4285f4 0%,#34a853 100%);
+  color:#fff;
 }
 
 .header h1 {
@@ -36,9 +35,9 @@ body, html {
 }
 
 .logo {
-  max-width: 120px;
+  max-width: 160px;
   height: auto;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 /* Contenido principal */

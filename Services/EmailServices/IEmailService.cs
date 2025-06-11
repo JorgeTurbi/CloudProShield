@@ -1,4 +1,5 @@
 namespace Services.EmailServices;
+
 public interface IEmailService
 {
     Task SendConfirmationEmailAsync(string email, string toke, string originUrl);
@@ -9,4 +10,5 @@ public interface IEmailService
     Task SendLoginNotificationAsync(string to, string ipInfo, string device);
     Task SendAsync(string to, string subject, string htmlBody);
     Task SendTemplatedEmailAsync<T>(string to, string subject, string template, T model);
+    Task SendAutoCreatedAccountAsync(string to, string tempPassword, string loginUrl);
 }

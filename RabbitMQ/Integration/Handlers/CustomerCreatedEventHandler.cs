@@ -37,7 +37,8 @@ public sealed class CustomerCreatedEventHandler : IIntegrationEventHandler<Custo
         }
         catch (Exception ex)
         {
-            _log.LogError(ex,
+            _log.LogError(
+                ex,
                 "Error procesando CustomerCreatedEvent para cliente {CustomerId}",
                 e.CustomerId
             );

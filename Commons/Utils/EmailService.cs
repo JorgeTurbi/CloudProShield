@@ -1,12 +1,12 @@
 namespace Commons.Utils;
 
+using System.Net;
+using System.Net.Mail;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Configuration;
 using RazorLight;
 using Services.EmailServices;
-using System.Net;
-using System.Net.Mail;
-using System.Threading.Tasks;
 
 public class EmailService : IEmailService
 {
@@ -16,14 +16,27 @@ public class EmailService : IEmailService
     private readonly RazorLightEngine _razorEngine;
     private readonly string _logoUrl;
     private readonly string _inlineCss;
+
     public EmailService(IConfiguration cfg, RazorLightEngine razorEngine)
     {
         _cfg = cfg;
         _from = _cfg["EmailSettings:From"]!;
         _client = BuildSmtpClient();
         _razorEngine = razorEngine;
-        _logoUrl = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mail", "Assets", "img", "logo.png");
-        var cssPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mail", "Assets", "css", "styles.css");
+        _logoUrl = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "Mail",
+            "Assets",
+            "img",
+            "logo.png"
+        );
+        var cssPath = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "Mail",
+            "Assets",
+            "css",
+            "styles.css"
+        );
         _inlineCss = File.Exists(cssPath) ? File.ReadAllText(cssPath) : string.Empty;
     }
 
@@ -38,7 +51,7 @@ public class EmailService : IEmailService
         return new SmtpClient(host, port)
         {
             Credentials = new NetworkCredential(user, pass),
-            EnableSsl = ssl
+            EnableSsl = ssl,
         };
     }
 
@@ -96,11 +109,15 @@ public class EmailService : IEmailService
         {
             From = new MailAddress(_from),
             Subject = subject,
-            IsBodyHtml = true
+            IsBodyHtml = true,
         };
         mail.To.Add(to);
 
-        var alternateView = AlternateView.CreateAlternateViewFromString(htmlBody, null, "text/html");
+        var alternateView = AlternateView.CreateAlternateViewFromString(
+            htmlBody,
+            null,
+            "text/html"
+        );
 
         if (File.Exists(_logoUrl))
         {
@@ -108,7 +125,7 @@ public class EmailService : IEmailService
             {
                 ContentId = "logoCid",
                 TransferEncoding = System.Net.Mime.TransferEncoding.Base64,
-                ContentType = new System.Net.Mime.ContentType("image/png")
+                ContentType = new System.Net.Mime.ContentType("image/png"),
             };
             alternateView.LinkedResources.Add(logoResource);
         }
@@ -129,7 +146,7 @@ public class EmailService : IEmailService
         {
             AppName = appName,
             ConfirmUrl = confirmUrl,
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("Welcome", model);
@@ -146,7 +163,7 @@ public class EmailService : IEmailService
         {
             AppName = appName,
             LoginUrl = loginUrl,
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("AccountConfirmed", model);
@@ -163,7 +180,7 @@ public class EmailService : IEmailService
             AppName = appName,
             ResetLink = resetLink,
             ExpirationHours = 1,
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("ForgotPassword", model);
@@ -180,7 +197,7 @@ public class EmailService : IEmailService
             AppName = appName,
             Otp = otp,
             ExpirationMinutes = 5,
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("Otp", model);
@@ -197,7 +214,7 @@ public class EmailService : IEmailService
             AppName = appName,
             IpInfo = ipInfo,
             Date = DateTime.UtcNow.ToString("g") + " UTC",
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("PasswordChanged", model);
@@ -215,17 +232,39 @@ public class EmailService : IEmailService
             IpInfo = ipInfo,
             Device = device,
             Date = DateTime.UtcNow.ToString("g") + " UTC",
-            Year = DateTime.Now.Year
+            Year = DateTime.Now.Year,
         };
 
         var htmlBody = await RenderTemplateAsync("Login", model);
         await SendAsync(to, $"Nuevo inicio de sesión – {appName}", htmlBody);
     }
 
-    /* ---------- Método genérico para enviar cualquier plantilla ---------- */
-    public async Task SendTemplatedEmailAsync<T>(string to, string subject, string template, T model)
+    /* ---------- Notificación de creacion de cuenta automática via TaxPro ---------- */
+    public async Task SendTemplatedEmailAsync<T>(
+        string to,
+        string subject,
+        string template,
+        T model
+    )
     {
         var htmlBody = await RenderTemplateAsync(template, model);
         await SendAsync(to, subject, htmlBody);
+    }
+
+    /* ---------- Método genérico para enviar cualquier plantilla ---------- */
+    public async Task SendAutoCreatedAccountAsync(string to, string tempPassword, string loginUrl)
+    {
+        var app = _cfg["Application:Name"] ?? "CloudShield";
+
+        var model = new
+        {
+            AppName = app,
+            Password = tempPassword,
+            LoginUrl = loginUrl,
+            Year = DateTime.Now.Year,
+        };
+
+        var html = await RenderTemplateAsync("AccountTaxProCreated", model);
+        await SendAsync(to, $"Tu nueva cuenta en {app}", html);
     }
 }
