@@ -268,6 +268,7 @@ public class UserLib : IUserCommandCreate, ISaveServices
 
             user.Confirm = true;
             user.IsActive = true;
+            user.UpdateAt = DateTime.Now;
 
             _context.User.Update(user);
             bool result = await Save();
