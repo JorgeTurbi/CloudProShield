@@ -288,8 +288,17 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     }
   }
 
-  public async Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(Guid UserId, CancellationToken ct = default)
+  public async Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(string guid, CancellationToken ct = default)
   {
+    if (Guid.TryParse(guid, out Guid UserId))
+    {
+      // El GUID es válido, puedes usar la variable 'guid' aquí
+    }
+    else
+    {
+      // El string no es un GUID válido
+      Console.WriteLine("El formato del GUID no es válido.");
+    }
     var space = await _context.SpacesClouds
       .AsNoTracking()
       .FirstOrDefaultAsync(s => s.UserId == UserId, ct);

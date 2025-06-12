@@ -53,7 +53,7 @@ public interface IFileSystemReadServiceUser
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Lista de todos los archivos del cliente</returns>
     Task<ApiResponse<List<FileItemDTO>>> GetAllCustomerFilesAsync(Guid UserId, CancellationToken ct = default);
-    Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(Guid UserId, CancellationToken ct = default);
+    Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(string UserId, CancellationToken ct = default);
     
 
 

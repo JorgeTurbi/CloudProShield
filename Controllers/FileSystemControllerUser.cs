@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CloudShield.DTOs.FileSystem;
 using CloudShield.Entities.Operations;
 using CloudShield.Services.FileSystemServices;
@@ -11,7 +12,7 @@ namespace CloudShield.Controllers;
 /// Controlador para gestionar la estructura de carpetas y archivos del sistema de almacenamiento
 /// </summary>
 [ApiController]
-[Route("api/usuario/{userId:guid}/filesystem")]
+[Route("api/usuario/filesystem")]
 [Authorize]
 public class FileSystemControllerUser : ControllerBase
 {
@@ -67,7 +68,6 @@ public class FileSystemControllerUser : ControllerBase
   /// <summary>
   /// Obtiene todas las carpetas disponibles para un usuario
   /// </summary>
-  /// <param name="userId">ID del usuario</param>
   /// <param name="ct">Token de cancelación</param>
   /// <returns>Lista de carpetas del usuario</returns>
   [HttpGet("folders")]
@@ -75,11 +75,21 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetCustomerFolders(
-      Guid userId,
       CancellationToken ct = default)
   {
     try
     {
+
+      string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+      if (Guid.TryParse(Id, out Guid userId))
+      {
+        // El GUID es válido, puedes usar la variable 'guid' aquí
+      }
+      else
+      {
+        // El string no es un GUID válido
+        Console.WriteLine("El formato del GUID no es válido.");
+      }
       _logger.LogInformation("Solicitando carpetas para usuario {UserId}", userId);
 
       var result = await _fileSystemService.GetCustomerFoldersAsync(userId, ct);
@@ -93,7 +103,7 @@ public class FileSystemControllerUser : ControllerBase
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Error no controlado al obtener carpetas para usuario {UserId}", userId);
+      _logger.LogError(ex, "Error no controlado al obtener carpetas para usuario {UserId}");
       var errorResponse = new ApiResponse<List<FolderDTO>>(
           false,
           "Error interno del servidor",
@@ -115,12 +125,22 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetFolderContent(
-      Guid userId,
+     
       string folderName,
       CancellationToken ct = default)
   {
     try
     {
+       string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+      if (Guid.TryParse(Id, out Guid userId))
+      {
+        // El GUID es válido, puedes usar la variable 'guid' aquí
+      }
+      else
+      {
+        // El string no es un GUID válido
+        Console.WriteLine("El formato del GUID no es válido.");
+      }
       if (string.IsNullOrWhiteSpace(folderName))
       {
         var badRequestResponse = new ApiResponse<FolderContentDTO>(
@@ -147,9 +167,8 @@ public class FileSystemControllerUser : ControllerBase
     catch (Exception ex)
     {
       _logger.LogError(ex,
-          "Error no controlado al obtener contenido de carpeta {FolderName} para usuario {UserId}",
-          folderName,
-          userId);
+          "Error no controlado al obtener contenido de carpeta {FolderName} para usuario {userId}",
+          folderName);
       var errorResponse = new ApiResponse<FolderContentDTO>(
           false,
           "Error interno del servidor",
@@ -160,8 +179,6 @@ public class FileSystemControllerUser : ControllerBase
 
   /// <summary>
   /// Obtiene todos los archivos de un usuario independientemente de la carpeta
-  /// </summary>
-  /// <param name="userId">ID del usuario</param>
   /// <param name="ct">Token de cancelación</param>
   /// <returns>Lista de todos los archivos del usuario</returns>
   [HttpGet("files")]
@@ -169,11 +186,20 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetAllCustomerFiles(
-      Guid userId,
       CancellationToken ct = default)
   {
     try
     {
+      string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+      if (Guid.TryParse(Id, out Guid userId))
+      {
+        // El GUID es válido, puedes usar la variable 'guid' aquí
+      }
+      else
+      {
+        // El string no es un GUID válido
+        Console.WriteLine("El formato del GUID no es válido.");
+      }
       _logger.LogInformation("Solicitando todos los archivos para usuario {UserId}", userId);
 
       var result = await _fileSystemService.GetAllCustomerFilesAsync(userId, ct);
@@ -187,7 +213,7 @@ public class FileSystemControllerUser : ControllerBase
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Error no controlado al obtener archivos para usuario {UserId}", userId);
+      _logger.LogError(ex, "Error no controlado al obtener archivos para usuario {userId}");
       var errorResponse = new ApiResponse<List<FileItemDTO>>(
           false,
           "Error interno del servidor",
@@ -201,12 +227,20 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<SpaceCloud>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse<SpaceCloud>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<SpaceCloud>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetAllStorage(
-      Guid userId,
-      CancellationToken ct = default)
+  public async Task<IActionResult> GetAllStorage(CancellationToken ct = default)
   {
     try
     {
+      string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+      // Alternativas según el claim utilizado:
+      // string? userId = User.FindFirst("sub")?.Value;
+      //string? userId = User.FindFirst("nameid")?.Value;
+
+      if (userId == null)
+      {
+        return Unauthorized("No se pudo extraer el ID del token.");
+      }
       _logger.LogInformation("Solicitando todos el almacenamiento del  {UserId}", userId);
 
       var result = await _fileSystemService.GetAllSpaceAsync(userId, ct);
@@ -220,7 +254,7 @@ public class FileSystemControllerUser : ControllerBase
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Error no controlado al obtener storage {UserId}", userId);
+      _logger.LogError(ex, "Error no controlado al obtener storage {UserId}");
       var errorResponse = new ApiResponse<SpaceCloud>(
           false,
           "Error interno del servidor");
@@ -229,7 +263,7 @@ public class FileSystemControllerUser : ControllerBase
   }
 
 
- /// <summary>
+  /// <summary>
   /// Obtiene todos los archivos de un usuario independientemente de la carpeta
   /// </summary>
   /// <param name="userId">ID del usuario</param>
