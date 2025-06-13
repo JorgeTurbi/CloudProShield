@@ -26,75 +26,82 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     /*  MÉTODO 1: Guardar y segmentar                              */
     /* ----------------------------------------------------------- */
     public async Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
-        Guid customerId,
-        IFormFile file,
-        CancellationToken ct
-    )
+     Guid customerId,
+     IFormFile file,
+     CancellationToken ct,
+     string? customFolder                                  // ✅ Nuevo parámetro opcional
+)
+{
+    var space = await _db
+        .Spaces.AsTracking()
+        .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+    if (space is null)
     {
-        // 1) Obtiene (o crea) el espacio
-        var space = await _db
-            .Spaces.AsTracking()
-            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
-
-        if (space is null)
+        space = new Space
         {
-            space = new Space
-            {
-                CustomerId = customerId,
-                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
-                UsedBytes = 0,
-                CreateAt = DateTime.UtcNow
-            };
-            await _db.Spaces.AddAsync(space, ct);
-            await _db.SaveChangesAsync(ct);
-        }
-
-        // 2) Cuota
-        if (space.UsedBytes + file.Length > space.MaxBytes)
-            return (false, "Se supera la cuota asignada");
-
-        // 3) Segmentación por tipo
-        var category = GetCategory(Path.GetExtension(file.FileName), file.ContentType);
-        var customerFolder = Path.Combine(_rootPath, customerId.ToString("N"));
-        var categoryFolder = Path.Combine(customerFolder, category);
-
-        Directory.CreateDirectory(categoryFolder);
-
-        var safeFileName = Path.GetFileName(file.FileName);
-        var filePath = Path.Combine(categoryFolder, safeFileName);
-        var relativePath = Path.Combine(category, safeFileName) // p. ej. "images/logo.png"
-            .Replace('\\', '/'); // normaliza
-
-        // 4) Guarda en disco
-        await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-        {
-            await file.CopyToAsync(stream, ct);
-        }
-
-        // 5) Guarda metadatos
-        var meta = new FileResource
-        {
-            SpaceId = space.Id,
-            FileName = safeFileName,
-            ContentType = file.ContentType ?? "application/octet-stream",
-            RelativePath = relativePath,
-            SizeBytes = file.Length,
-            CreateAt = DateTime.UtcNow,
+            CustomerId = customerId,
+            MaxBytes = 5L * 1024 * 1024 * 1024,
+            UsedBytes = 0,
+            CreateAt = DateTime.UtcNow
         };
-        await _db.FileResources.AddAsync(meta, ct);
-
-        space.UsedBytes += file.Length;
+        await _db.Spaces.AddAsync(space, ct);
         await _db.SaveChangesAsync(ct);
-
-        _log.LogInformation(
-            "Archivo {File} ({Cat}) guardado para {Customer}",
-            safeFileName,
-            category,
-            customerId
-        );
-
-        return (true, relativePath);
     }
+
+    if (space.UsedBytes + file.Length > space.MaxBytes)
+        return (false, "Se supera la cuota asignada");
+
+    var safeFileName = Path.GetFileName(file.FileName);
+    var customerFolder = Path.Combine(_rootPath, customerId.ToString("N"));
+
+    // ✅ Ruta final considerando carpeta personalizada o categoría
+    string finalFolder;
+    string subFolder;
+
+    if (!string.IsNullOrWhiteSpace(customFolder))
+    {
+        subFolder = customFolder.Trim();
+    }
+    else
+    {
+        subFolder = GetCategory(Path.GetExtension(file.FileName), file.ContentType);
+    }
+
+    finalFolder = Path.Combine(customerFolder, subFolder);
+    Directory.CreateDirectory(finalFolder);
+
+    var filePath = Path.Combine(finalFolder, safeFileName);
+    var relativePath = Path.Combine(subFolder, safeFileName).Replace('\\', '/');
+
+    await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+    {
+        await file.CopyToAsync(stream, ct);
+    }
+
+    var meta = new FileResource
+    {
+        SpaceId = space.Id,
+        FileName = safeFileName,
+        ContentType = file.ContentType ?? "application/octet-stream",
+        RelativePath = relativePath,
+        SizeBytes = file.Length,
+        CreateAt = DateTime.UtcNow,
+    };
+    await _db.FileResources.AddAsync(meta, ct);
+
+    space.UsedBytes += file.Length;
+    await _db.SaveChangesAsync(ct);
+
+    _log.LogInformation(
+        "Archivo {File} guardado para {Customer} en carpeta {Folder}",
+        safeFileName,
+        customerId,
+        subFolder
+    );
+
+    return (true, relativePath);
+}
 
     /* ----------------------------------------------------------- */
     /*  MÉTODO 2: Obtener archivo por path                         */
