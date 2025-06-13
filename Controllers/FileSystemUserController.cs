@@ -34,10 +34,10 @@ public class FileSystemControllerUser : ControllerBase
   /// <param name="ct">Token de cancelación</param>
   /// <returns>Estructura de carpetas del usuario</returns>
   [HttpGet("structure")]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status200OK)]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status404NotFound)]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetCustomerFolderStructure(
+  [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status200OK)]
+  [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status404NotFound)]
+  [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status500InternalServerError)]
+  public async Task<IActionResult> GetUserFolderStructure(
       Guid userId,
       CancellationToken ct = default)
   {
@@ -45,7 +45,7 @@ public class FileSystemControllerUser : ControllerBase
     {
       _logger.LogInformation("Solicitando estructura de carpetas para usuario {UserId}", userId);
 
-      var result = await _fileSystemService.GetCustomerFolderStructureAsync(userId, ct);
+      var result = await _fileSystemService.GetUserFolderStructureAsync(userId, ct);
 
       if (!result.Success)
       {
@@ -57,7 +57,7 @@ public class FileSystemControllerUser : ControllerBase
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error no controlado al obtener estructura para usuario {UserId}", userId);
-      var errorResponse = new ApiResponse<CustomerFolderStructureDTO>(
+      var errorResponse = new ApiResponse<UserFolderStructureDTO>(
           false,
           "Error interno del servidor",
           null);
@@ -74,7 +74,7 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetCustomerFolders(
+  public async Task<IActionResult> GetUserFolders(
       CancellationToken ct = default)
   {
     try
@@ -92,7 +92,7 @@ public class FileSystemControllerUser : ControllerBase
       }
       _logger.LogInformation("Solicitando carpetas para usuario {UserId}", userId);
 
-      var result = await _fileSystemService.GetCustomerFoldersAsync(userId, ct);
+      var result = await _fileSystemService.GetUserFoldersAsync(userId, ct);
 
       if (!result.Success)
       {
@@ -202,7 +202,7 @@ public class FileSystemControllerUser : ControllerBase
       }
       _logger.LogInformation("Solicitando todos los archivos para usuario {UserId}", userId);
 
-      var result = await _fileSystemService.GetAllCustomerFilesAsync(userId, ct);
+      var result = await _fileSystemService.GetAllUserFilesAsync(userId, ct);
 
       if (!result.Success)
       {
@@ -278,20 +278,20 @@ public class FileSystemControllerUser : ControllerBase
   public async Task<IActionResult> GetAllExplore(
       CancellationToken ct = default)
   {
- try
+    try
     {
-    string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-    if (Guid.TryParse(Id, out Guid userId))
-    {
-      // El GUID es válido, puedes usar la variable 'guid' aquí
-    }
-    else
-    {
-      // El string no es un GUID válido
-      Console.WriteLine("El formato del GUID no es válido.");
-    }
+      string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+      if (Guid.TryParse(Id, out Guid userId))
+      {
+        // El GUID es válido, puedes usar la variable 'guid' aquí
+      }
+      else
+      {
+        // El string no es un GUID válido
+        Console.WriteLine("El formato del GUID no es válido.");
+      }
 
-   
+
       _logger.LogInformation("Solicitando carpetas  {UserId}", userId);
 
       var result = await _fileSystemService.GetFolderContentExploreAsync(userId, ct);

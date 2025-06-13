@@ -102,7 +102,7 @@ public class ApplicationDbContext : DbContext
 
             // Relación 1-N → FileResource
             e.HasMany(s => s.FileResourcesCloud)
-                .WithOne(fr => fr.Space)
+                .WithOne(fr => fr.SpaceCloud)
                 .HasForeignKey(fr => fr.SpaceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
