@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using CloudShield.Services.OperationStorage;   // Donde vive tu IStorageService
 using System.Net.Mime;
+using DTOs.FilesDTO;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Controllers;
 
@@ -8,38 +10,40 @@ namespace Controllers;
 /// Gestiona los archivos pertenecientes a un cliente (customer).
 /// </summary>
 [ApiController]
-[Route("api/customers/{customerId:guid}/files")]
+[Route("api/customers/files")]
 public class FilesController : ControllerBase
 {
     private readonly IStorageService _storage;
 
     public FilesController(IStorageService storage) => _storage = storage;
 
- 
-[HttpPost()]                          // ← el id va en la ruta
-[RequestSizeLimit(5L * 1024 * 1024 * 1024)]              // 5 GB (ajusta)
+ [AllowAnonymous]
+[HttpPost]
+[RequestSizeLimit(5L * 1024 * 1024 * 1024)] // 5 GB
 [RequestFormLimits(MultipartBodyLengthLimit = 5L * 1024 * 1024 * 1024)]
 [Consumes(MediaTypeNames.Multipart.FormData)]
 [ProducesResponseType(StatusCodes.Status201Created)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
 public async Task<IActionResult> Upload(
-    Guid customerId,                         // ↙ en la URL
-     IFormFile file,                           // ↙ se muestra como file-picker
+           // Puedes usar [FromRoute] si viene en la URL
+    [FromForm] FilePost file,            // obligatorio para multipart/form-data
+       // viene del form como texto
     CancellationToken ct)
 {
-    if (file == null || file.Length == 0)
+    if (file.File == null || file.File.Length == 0)
         return BadRequest(new { error = "Archivo vacío o no enviado." });
 
     var (ok, relativePathOrReason) =
-        await _storage.SaveFileAsync(customerId, file, ct);
+        await _storage.SaveFileAsync(file.CustomerId, file.File, ct, file.CustomFolder); // ✅ incluye la carpeta
 
     if (!ok)
         return BadRequest(new { error = relativePathOrReason });
 
     return CreatedAtAction(
-        nameof(Download),                                // GET de descarga
-        new { customerId, relativePath = relativePathOrReason },
-        new { path = relativePathOrReason });
+        nameof(Download),
+        new { file.CustomerId, relativePath = relativePathOrReason },
+        new { path = relativePathOrReason }
+    );
 }
 
 

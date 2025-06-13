@@ -7,7 +7,7 @@ public interface IStorageService
     Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
         Guid customerId,
         IFormFile file,
-        CancellationToken ct
+        CancellationToken ct,  string? customFolder  
     );
     Task<(bool ok, string reason)> DeleteFileAsync(
         Guid spaceId,
