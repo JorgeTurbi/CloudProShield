@@ -125,13 +125,13 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetFolderContent(
-     
+
       string folderName,
       CancellationToken ct = default)
   {
     try
     {
-       string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+      string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
       if (Guid.TryParse(Id, out Guid userId))
       {
         // El GUID es válido, puedes usar la variable 'guid' aquí
@@ -276,12 +276,22 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetAllExplore(
-      Guid userId,
       CancellationToken ct = default)
   {
-
-    try
+ try
     {
+    string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (Guid.TryParse(Id, out Guid userId))
+    {
+      // El GUID es válido, puedes usar la variable 'guid' aquí
+    }
+    else
+    {
+      // El string no es un GUID válido
+      Console.WriteLine("El formato del GUID no es válido.");
+    }
+
+   
       _logger.LogInformation("Solicitando carpetas  {UserId}", userId);
 
       var result = await _fileSystemService.GetFolderContentExploreAsync(userId, ct);
@@ -295,7 +305,7 @@ public class FileSystemControllerUser : ControllerBase
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Error no controlado al obtener carpetas {UserId}", userId);
+      _logger.LogError(ex, "Error no controlado al obtener carpetas {UserId}");
       var errorResponse = new ApiResponse<FolderContentDTO>(
           false,
           "Error interno del servidor");

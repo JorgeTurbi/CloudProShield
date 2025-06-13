@@ -106,15 +106,15 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
     )
     {
         var space = await _db
-            .Spaces.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+            .SpacesClouds.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == customerId, ct);
 
         if (space is null)
             return (false, null, null, "Espacio no encontrado")!;
 
         // Verifica que el archivo pertenezca al cliente
         var meta = await _db
-            .FileResources.AsNoTracking()
+            .FileResourcesCloud.AsNoTracking()
             .Where(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath)
             .FirstOrDefaultAsync(ct);
         if (meta is null)
