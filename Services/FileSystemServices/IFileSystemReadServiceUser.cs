@@ -12,7 +12,7 @@ public interface IFileSystemReadServiceUser
     /// <param name="UserId">ID del cliente</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Estructura de carpetas del cliente</returns>
-    Task<ApiResponse<UserFolderStructureDTO>> GetCustomerFolderStructureAsync(
+    Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
         Guid UserId,
         CancellationToken ct = default);
 
@@ -27,7 +27,7 @@ public interface IFileSystemReadServiceUser
         Guid UserId,
         string folderName,
         CancellationToken ct = default);
-/// <summary>
+    /// <summary>
     /// Lista todas las carpetas disponibles para un cliente
     /// </summary>
     /// <param name="UserId">ID del cliente</param>
@@ -35,14 +35,14 @@ public interface IFileSystemReadServiceUser
     /// <returns>Lista de carpetas</returns>
     /// 
 
- Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(Guid UserId ,CancellationToken ct = default);
+    Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(Guid UserId, CancellationToken ct = default);
     /// <summary>
     /// Lista todas las carpetas disponibles para un cliente
     /// </summary>
     /// <param name="UserId">ID del cliente</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Lista de carpetas</returns>
-    Task<ApiResponse<List<FolderDTO>>> GetCustomerFoldersAsync(
+    Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
         Guid UserId,
         CancellationToken ct = default);
 
@@ -52,9 +52,6 @@ public interface IFileSystemReadServiceUser
     /// <param name="UserId">ID del cliente</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Lista de todos los archivos del cliente</returns>
-    Task<ApiResponse<List<FileItemDTO>>> GetAllCustomerFilesAsync(Guid UserId, CancellationToken ct = default);
+    Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(Guid UserId, CancellationToken ct = default);
     Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(string UserId, CancellationToken ct = default);
-    
-
-
 }

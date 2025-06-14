@@ -9,5 +9,5 @@ public class FileResourceCloud : BaseAbstract
     public string ContentType { get; set; } = default!;
     public string RelativePath { get; set; } = default!; // p. ej. "images/logo.png"
     public long SizeBytes { get; set; }
-    public virtual SpaceCloud? Space { get; set; }
+    public virtual SpaceCloud? SpaceCloud { get; set; }
 }

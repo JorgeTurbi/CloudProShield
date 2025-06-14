@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CloudShield.Services.OperationStorage;
 
-public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvisionerUser
+public class LocalDiskStorageServiceUser : IStorageServiceUser
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<LocalDiskStorageServiceUser> _log;
@@ -29,7 +29,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
     /*  MÉTODO 1: Guardar y segmentar                              */
     /* ----------------------------------------------------------- */
     public async Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
-        Guid customerId,
+        Guid userId,
         IFormFile file,
         CancellationToken ct
     )
@@ -37,13 +37,13 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
         // 1) Obtiene (o crea) el espacio
         var space = await _db
             .SpacesClouds.AsTracking()
-            .FirstOrDefaultAsync(s => s.UserId == customerId, ct);
+            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
         if (space is null)
         {
             space = new SpaceCloud
             {
-                UserId = customerId,
+                UserId = userId,
                 MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
                 UsedBytes = 0,
                 CreateAt = DateTime.UtcNow
@@ -58,15 +58,15 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
 
         // 3) Segmentación por tipo
         var category = GetCategory(Path.GetExtension(file.FileName), file.ContentType);
-        var customerFolder = Path.Combine(_rootPath, customerId.ToString("N"));
-        var categoryFolder = Path.Combine(customerFolder, category);
+        var userFolder = FileStoragePathResolver.UserRoot(_rootPath, userId);
+        Directory.CreateDirectory(userFolder);
 
+        var categoryFolder = Path.Combine(userFolder, category);
         Directory.CreateDirectory(categoryFolder);
 
         var safeFileName = Path.GetFileName(file.FileName);
         var filePath = Path.Combine(categoryFolder, safeFileName);
-        var relativePath = Path.Combine(category, safeFileName) // p. ej. "images/logo.png"
-            .Replace('\\', '/'); // normaliza
+        var relativePath = $"{category}/{safeFileName}";
 
         // 4) Guarda en disco
         await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
@@ -90,10 +90,10 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
         await _db.SaveChangesAsync(ct);
 
         _log.LogInformation(
-            "Archivo {File} ({Cat}) guardado para {Customer}",
+            "Archivo {File} ({Cat}) guardado para {User}",
             safeFileName,
             category,
-            customerId
+            userId
         );
 
         return (true, relativePath);
@@ -103,14 +103,14 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
     /*  MÉTODO 2: Obtener archivo por path                         */
     /* ----------------------------------------------------------- */
     public async Task<(bool ok, Stream content, string contentType, string reason)> GetFileAsync(
-        Guid customerId,
+        Guid userId,
         string relativePath,
         CancellationToken ct
     )
     {
         var space = await _db
             .SpacesClouds.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.UserId == customerId, ct);
+            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
         if (space is null)
             return (false, null, null, "Espacio no encontrado")!;
@@ -123,7 +123,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
         if (meta is null)
             return (false, null, null, "Archivo no registrado")!;
 
-        var fullPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath);
+        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), relativePath);
         if (!System.IO.File.Exists(fullPath))
             return (false, null, null, "Archivo físico no encontrado")!;
 
@@ -158,13 +158,13 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
     )
     {
         // 1) Obtiene el espacio
-        var space = await _db.Spaces.AsTracking().FirstOrDefaultAsync(s => s.Id == spaceId, ct);
+        var space = await _db.SpacesClouds.AsTracking().FirstOrDefaultAsync(s => s.Id == spaceId, ct);
 
         if (space is null)
             return (false, "Espacio no encontrado");
 
         // 2) Busca el metadato del archivo
-        var meta = await _db.FileResources.FirstOrDefaultAsync(
+        var meta = await _db.FileResourcesCloud.FirstOrDefaultAsync(
             fr => fr.SpaceId == spaceId && fr.RelativePath == relativePath,
             ct
         );
@@ -174,9 +174,9 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
 
         // 3) Construye la ruta física (evita traversal)
         var safeRelativePath = relativePath.Replace('\\', '/').TrimStart('/').Trim();
-        var fullPath = Path.Combine(_rootPath, space.CustomerId.ToString("N"), safeRelativePath);
+        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, space.UserId), relativePath);
         var normalizedRoot = Path.GetFullPath(
-            Path.Combine(_rootPath, space.CustomerId.ToString("N"))
+            Path.Combine(_rootPath, space.UserId.ToString("N"))
         );
         var normalizedPath = Path.GetFullPath(fullPath);
 
@@ -189,7 +189,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
 
         // 5) Actualiza UsedBytes y borra metadato
         space.UsedBytes = Math.Max(space.UsedBytes - fileBytes, 0);
-        _db.FileResources.Remove(meta);
+        _db.FileResourcesCloud.Remove(meta);
 
         await _db.SaveChangesAsync(ct);
 
@@ -202,24 +202,24 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
     }
 
 #pragma warning disable CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
-    public async Task<FileResource?> FindMetaAsync(
+    public async Task<FileResourceCloud?> FindMetaAsync(
 #pragma warning restore CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
-        Guid customerId,
+        Guid userId,
         string relativePath,
         CancellationToken ct
     )
     {
         var space = await _db
-            .Spaces.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+            .SpacesClouds.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == userId, ct);
         if (space is null)
         {
-            _log.LogWarning("No se encontró el espacio para el cliente {CustomerId}", customerId);
+            _log.LogWarning("No se encontró el espacio para el cliente {UserId}", userId);
             return null!;
         }
 
         return await _db
-            .FileResources.AsNoTracking()
+            .FileResourcesCloud.AsNoTracking()
             .Where(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath)
             .FirstOrDefaultAsync(ct);
     }

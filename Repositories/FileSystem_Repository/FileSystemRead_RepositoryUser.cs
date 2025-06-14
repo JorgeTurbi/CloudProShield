@@ -1,4 +1,5 @@
 using AutoMapper;
+using CloudShield.Commons.Helpers;
 using CloudShield.DTOs.FileSystem;
 using CloudShield.Entities.Operations;
 using CloudShield.Services.FileSystemServices;
@@ -29,7 +30,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     _rootPath = _configuration["Storage:RootPath"] ?? "storage";
   }
 
-  public async Task<ApiResponse<UserFolderStructureDTO>> GetCustomerFolderStructureAsync(
+  public async Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
       Guid UserId,
       CancellationToken ct = default)
   {
@@ -49,7 +50,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       }
 
       var currentYear = DateTime.UtcNow.Year.ToString();
-      var customerPath = Path.Combine(_rootPath, currentYear, UserId.ToString("N"));
+      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
 
       var result = new UserFolderStructureDTO
       {
@@ -61,10 +62,10 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
         TotalSizeBytes = space.FileResourcesCloud.Sum(f => f.SizeBytes)
       };
 
-      if (Directory.Exists(customerPath))
+      if (Directory.Exists(userPath))
       {
         var folders = new List<FolderDTO>();
-        var subDirectories = Directory.GetDirectories(customerPath);
+        var subDirectories = Directory.GetDirectories(userPath);
 
         foreach (var dirPath in subDirectories)
         {
@@ -170,7 +171,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     }
   }
 
-  public async Task<ApiResponse<List<FolderDTO>>> GetCustomerFoldersAsync(
+  public async Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
       Guid UserId,
       CancellationToken ct = default)
   {
@@ -190,13 +191,13 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       }
 
       var currentYear = DateTime.UtcNow.Year.ToString();
-      var customerPath = Path.Combine(_rootPath, currentYear, UserId.ToString("N"));
+      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
 
       var folders = new List<FolderDTO>();
 
-      if (Directory.Exists(customerPath))
+      if (Directory.Exists(userPath))
       {
-        var subDirectories = Directory.GetDirectories(customerPath);
+        var subDirectories = Directory.GetDirectories(userPath);
 
         foreach (var dirPath in subDirectories)
         {
@@ -236,7 +237,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     }
   }
 
-  public async Task<ApiResponse<List<FileItemDTO>>> GetAllCustomerFilesAsync(
+  public async Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(
       Guid UserId,
       CancellationToken ct = default)
   {
@@ -332,10 +333,10 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       }
 
       // Construir la ruta base de almacenamiento
-      var customerPath = Path.Combine(_rootPath, UserId.ToString("N")).Replace("\\", "/");
+      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
 
       // Obtener carpetas (subcarpetas) directamente dentro de la ruta base
-      var folderPaths = Directory.GetDirectories(customerPath);
+      var folderPaths = Directory.GetDirectories(userPath);
       var folderItems = folderPaths.Select(folderPath => new FolderItemDTO
       {
         Name = Path.GetFileName(folderPath),
@@ -363,7 +364,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       var folderContent = new FolderContentDTO
       {
         FolderName = "root",
-        FolderPath = customerPath,
+        FolderPath = userPath,
         Folders = folderItems,
         Files = fileItems,
         TotalFiles = fileItems.Count,
