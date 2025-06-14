@@ -41,5 +41,29 @@ namespace CloudProShield.Controllers
             return File(stream!, contentType ?? "application/octet-stream");
         }
 
+
+
+        [HttpGet("download-folder")]
+        public async Task<IActionResult> DownloadFolder([FromQuery] string relativePath, CancellationToken ct)
+        {
+            string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(Id, out Guid customerId))
+            {
+                // El GUID es válido, puedes usar la variable 'guid' aquí
+            }
+            else
+            {
+                // El string no es un GUID válido
+                Console.WriteLine("El formato del GUID no es válido.");
+            }
+
+            var zipBytes = await _storage.CreateFolderZipAsync(customerId, relativePath, ct);
+
+            if (zipBytes == null)
+                return NotFound("La carpeta no existe");
+
+            return File(zipBytes, "application/zip", $"{Path.GetFileName(relativePath)}.zip");
+        }
     }
+
 }

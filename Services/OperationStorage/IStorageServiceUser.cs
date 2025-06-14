@@ -1,4 +1,5 @@
 using CloudShield.Entities.Operations;
+using Commons;
 
 namespace CloudShield.Services.OperationStorage;
 
@@ -24,4 +25,5 @@ public interface IStorageServiceUser
     // …otros métodos (descarga, listado, etc.)
     /* METADATO ← NUEVO */
     Task<FileResource> FindMetaAsync(Guid UserId, string relativePath, CancellationToken ct);
+    Task<byte[]> CreateFolderZipAsync(Guid customerId, string relativePath, CancellationToken ct);
 }

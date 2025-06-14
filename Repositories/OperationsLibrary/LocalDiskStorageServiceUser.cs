@@ -1,5 +1,8 @@
+
+using System.IO.Compression;
 using System.Linq;
 using CloudShield.Entities.Operations;
+using Commons;
 using DataContext;
 using Microsoft.EntityFrameworkCore;
 
@@ -267,4 +270,30 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser, IFolderProvision
 
         _log.LogInformation("Estructura de {CustomerId} lista en {Path}", customerId, customerFolder);
     }
+
+    public async Task<byte[]> CreateFolderZipAsync(Guid customerId, string relativePath, CancellationToken ct)
+    {
+        var folderPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath).Replace("\\", "/");
+
+        if (!Directory.Exists(folderPath))
+            return null;
+
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        {
+            var files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
+
+            foreach (var file in files)
+            {
+                var relativeZipPath = Path.GetRelativePath(folderPath, file);
+                var entry = archive.CreateEntry(relativeZipPath, CompressionLevel.Fastest);
+                using var entryStream = entry.Open();
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(file, ct);
+                await entryStream.WriteAsync(fileBytes, ct);
+            }
+        }
+
+        return memoryStream.ToArray();
+    }
+
 }
