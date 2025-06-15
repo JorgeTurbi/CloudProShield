@@ -102,20 +102,18 @@ public class FilesController : ControllerBase
     /// <summary>
     /// Descarga una carpeta del cliente en formato .zip
     /// </summary>
-    [HttpGet("folders/{folderName}/zip")]
+    [HttpGet("folders/{folderPath}/zip")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadFolderZip(
         Guid customerId,
-        string folderName,
+        string folderPath,
         CancellationToken ct = default
     )
     {
-        var (ok, stream, reason) = await _storage.GetFolderZipAsync(customerId, folderName, ct);
-
-        if (!ok)
-            return NotFound(new { error = reason });
-
-        return File(stream!, "application/zip", $"{folderName}.zip");
+        var (ok, stream, reason) = await _storage.GetFolderZipAsync(customerId, folderPath, ct);
+        return ok
+            ? File(stream!, "application/zip", $"{Path.GetFileName(folderPath)}.zip")
+            : NotFound(new { error = reason });
     }
 }

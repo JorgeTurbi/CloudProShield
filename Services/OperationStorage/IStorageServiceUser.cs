@@ -24,6 +24,10 @@ public interface IStorageServiceUser
 
     // …otros métodos (descarga, listado, etc.)
     /* METADATO ← NUEVO */
-    Task<FileResourceCloud> FindMetaAsync(Guid UserId, string relativePath, CancellationToken ct);
+    Task<FileResourceCloud?> FindMetaAsyncUser(
+        Guid UserId,
+        string relativePath,
+        CancellationToken ct
+    );
     Task<byte[]> CreateFolderZipAsync(Guid customerId, string relativePath, CancellationToken ct);
 }

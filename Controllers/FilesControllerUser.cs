@@ -72,7 +72,7 @@ public class FilesControllerUser : ControllerBase
             return BadRequest(new { error = "relativePath requerido." });
 
         // Recupera el tamaño registrado para ajustar UsedBytes:
-        var meta = await _storage.FindMetaAsync(userId, relativePath, ct);
+        var meta = await _storage.FindMetaAsyncUser(userId, relativePath, ct);
         if (meta is null)
             return NotFound(new { error = "Archivo no encontrado." });
 

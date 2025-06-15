@@ -42,25 +42,25 @@ public class FileSystemController : ControllerBase
         if (dto is null || string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest(new { error = "Nombre requerido" });
 
-        // Construimos la ruta completa “parent/Name”
         var relPath = string.IsNullOrWhiteSpace(dto.ParentPath)
             ? dto.Name
             : $"{dto.ParentPath.TrimEnd('/')}/{dto.Name}";
 
         var resp = await _storage.CreateFolderAsync(customerId, relPath, ct);
-        return resp.Success ? StatusCode(StatusCodes.Status201Created, resp) : BadRequest(resp);
+        return resp.Success ? StatusCode(201, resp) : BadRequest(resp);
     }
 
-    [HttpDelete("folders/{folderName}")]
+    [HttpDelete("folders/{*folderPath}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteFolder(
         Guid customerId,
-        string folderName,
+        string folderPath,
         CancellationToken ct = default
     )
     {
-        var (ok, reason) = await _storage.DeleteFolderAsync(customerId, folderName, ct);
+        folderPath = Uri.UnescapeDataString(folderPath ?? "").Trim('/');
+        var (ok, reason) = await _storage.DeleteFolderAsync(customerId, folderPath, ct);
         return ok ? NoContent() : BadRequest(new { error = reason });
     }
 
@@ -171,7 +171,7 @@ public class FileSystemController : ControllerBase
     /// <param name="folderName">Nombre de la carpeta (Firms o Documents)</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Contenido de la carpeta especificada</returns>
-    [HttpGet("folders/{folderName}")]
+    [HttpGet("folders/{*folderPath}")]
     [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
@@ -181,52 +181,18 @@ public class FileSystemController : ControllerBase
     )]
     public async Task<IActionResult> GetFolderContent(
         Guid customerId,
-        string folderName,
+        string folderPath,
         CancellationToken ct = default
     )
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(folderName))
-            {
-                var badRequestResponse = new ApiResponse<FolderContentDTO>(
-                    false,
-                    "El nombre de la carpeta es requerido",
-                    null
-                );
-                return BadRequest(badRequestResponse);
-            }
+        folderPath = Uri.UnescapeDataString(folderPath ?? "").Trim('/');
+        if (string.IsNullOrWhiteSpace(folderPath))
+            return BadRequest(new { error = "El nombre de la carpeta es requerido" });
 
-            _logger.LogInformation(
-                "Solicitando contenido de carpeta {FolderName} para cliente {CustomerId}",
-                folderName,
-                customerId
-            );
-
-            var result = await _fileSystemService.GetFolderContentAsync(customerId, folderName, ct);
-
-            if (!result.Success)
-            {
-                return result.Data == null ? NotFound(result) : BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error no controlado al obtener contenido de carpeta {FolderName} para cliente {CustomerId}",
-                folderName,
-                customerId
-            );
-            var errorResponse = new ApiResponse<FolderContentDTO>(
-                false,
-                "Error interno del servidor",
-                null
-            );
-            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-        }
+        var result = await _fileSystemService.GetFolderContentAsync(customerId, folderPath, ct);
+        return result.Success ? Ok(result)
+            : result.Data == null ? NotFound(result)
+            : BadRequest(result);
     }
 
     /// <summary>
