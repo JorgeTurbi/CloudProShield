@@ -8,3 +8,8 @@ public class FolderDTO
     public int FileCount { get; set; }
     public long TotalSizeBytes { get; set; }
 }
+
+public class NewFolderDTO
+{
+    public required string Name { get; set; }
+}

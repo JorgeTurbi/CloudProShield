@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using CloudShield.Entities.Operations;
+using Commons;
 using DataContext;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,39 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         _rootPath = cfg["Storage:RootPath"] ?? "storage"; // configurable
         _db = db;
         _log = log;
+    }
+
+    /* ----------------------------------------------------------- */
+    /*  MÉTODO 0: Crear Folders                             */
+    /* ----------------------------------------------------------- */
+    public async Task<ApiResponse<object>> CreateFolderAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct = default
+    )
+    {
+        // 🔐 normaliza nombre
+        folder = Regex.Replace(folder, @"[^A-Za-z0-9_\- ]", "").Trim();
+        if (string.IsNullOrWhiteSpace(folder))
+            return new ApiResponse<object>(false, "Nombre de carpeta no válido", null);
+
+        try
+        {
+            await EnsureStructureAsync(customerId, new[] { folder }, ct);
+            _log.LogInformation("Carpeta {Folder} creada para {Customer}", folder, customerId);
+
+            return new ApiResponse<object>(true, "Carpeta creada", new { folder });
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(
+                ex,
+                "Error al crear carpeta {Folder} para {Customer}",
+                folder,
+                customerId
+            );
+            return new ApiResponse<object>(false, "Error interno al crear carpeta", null);
+        }
     }
 
     /* ----------------------------------------------------------- */

@@ -1,5 +1,6 @@
 using CloudShield.DTOs.FileSystem;
 using CloudShield.Services.FileSystemServices;
+using CloudShield.Services.OperationStorage;
 using Commons;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,15 +16,35 @@ namespace CloudShield.Controllers;
 public class FileSystemController : ControllerBase
 {
     private readonly IFileSystemReadService _fileSystemService;
+    private readonly IStorageService _storage;
     private readonly ILogger<FileSystemController> _logger;
 
     public FileSystemController(
         IFileSystemReadService fileSystemService,
-        ILogger<FileSystemController> logger
+        ILogger<FileSystemController> logger,
+        IStorageService storage
     )
     {
         _fileSystemService = fileSystemService;
         _logger = logger;
+        _storage = storage;
+    }
+
+    [HttpPost("folders")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateFolder(
+        Guid customerId,
+        [FromBody] NewFolderDTO dto,
+        CancellationToken ct = default
+    )
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Name))
+            return BadRequest(new ApiResponse<object>(false, "Nombre requerido", null));
+
+        var resp = await _storage.CreateFolderAsync(customerId, dto.Name, ct);
+
+        return resp.Success ? StatusCode(StatusCodes.Status201Created, resp) : BadRequest(resp);
     }
 
     /// <summary>

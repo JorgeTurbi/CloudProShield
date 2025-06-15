@@ -1,4 +1,5 @@
 using CloudShield.Entities.Operations;
+using Commons;
 
 namespace CloudShield.Services.OperationStorage;
 
@@ -7,7 +8,8 @@ public interface IStorageService
     Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
         Guid customerId,
         IFormFile file,
-        CancellationToken ct, string? customFolder
+        CancellationToken ct,
+        string? customFolder
     );
     Task<(bool ok, string reason)> DeleteFileAsync(
         Guid spaceId,
@@ -23,6 +25,10 @@ public interface IStorageService
 
     // …otros métodos (descarga, listado, etc.)
     /* METADATO ← NUEVO */
+    Task<ApiResponse<object>> CreateFolderAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct
+    );
     Task<FileResource> FindMetaAsync(Guid customerId, string relativePath, CancellationToken ct);
-    
 }
