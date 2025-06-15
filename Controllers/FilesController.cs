@@ -16,8 +16,7 @@ public class FilesController : ControllerBase
     private readonly IStorageService _storage;
 
     public FilesController(IStorageService storage) => _storage = storage;
-
- [AllowAnonymous]
+    
 [HttpPost]
 [RequestSizeLimit(5L * 1024 * 1024 * 1024)] // 5 GB
 [RequestFormLimits(MultipartBodyLengthLimit = 5L * 1024 * 1024 * 1024)]

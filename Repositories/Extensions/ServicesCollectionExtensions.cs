@@ -76,9 +76,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFolderProvisioner>(sp =>
             (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
         );
-        services.AddScoped<IFolderProvisionerUser>(sp =>
-            (IFolderProvisionerUser)sp.GetRequiredService<IStorageServiceUser>()
-        );
 
         // Handlers for RabbitMQ events
         services.AddScoped<CustomerCreatedEventHandler>();

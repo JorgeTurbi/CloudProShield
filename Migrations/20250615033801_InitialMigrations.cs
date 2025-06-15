@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CloudShield.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class InitialMigrations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,7 +31,7 @@ namespace CloudShield.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -47,7 +47,7 @@ namespace CloudShield.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -74,12 +74,12 @@ namespace CloudShield.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "User",
+                name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SurName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SurName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Dob = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -87,16 +87,16 @@ namespace CloudShield.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     Confirm = table.Column<bool>(type: "bit", nullable: false),
                     ConfirmToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ResetPasswordToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ResetPasswordToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ResetPasswordExpires = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Otp = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Otp = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     OtpExpires = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_User", x => x.Id);
+                    table.PrimaryKey("PK_Users", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -167,9 +167,9 @@ namespace CloudShield.Migrations
                         principalTable: "Role",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_RolePermissions_User_UserId",
+                        name: "FK_RolePermissions_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "User",
+                        principalTable: "Users",
                         principalColumn: "Id");
                 });
 
@@ -181,11 +181,11 @@ namespace CloudShield.Migrations
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     TokenRequest = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ExpireTokenRequest = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    TokenRefresh = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TokenRefresh = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ExpireTokenRefresh = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IpAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Device = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Location = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Device = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsRevoke = table.Column<bool>(type: "bit", nullable: false),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -194,9 +194,9 @@ namespace CloudShield.Migrations
                 {
                     table.PrimaryKey("PK_Sessions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Sessions_User_UserId",
+                        name: "FK_Sessions_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "User",
+                        principalTable: "Users",
                         principalColumn: "Id");
                 });
 
@@ -216,9 +216,9 @@ namespace CloudShield.Migrations
                 {
                     table.PrimaryKey("PK_SpacesClouds", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_SpacesClouds_User_UserId",
+                        name: "FK_SpacesClouds_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "User",
+                        principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -232,9 +232,9 @@ namespace CloudShield.Migrations
                     CountryId = table.Column<int>(type: "int", nullable: false),
                     StateId = table.Column<int>(type: "int", nullable: false),
                     City = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Street = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Line = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ZipCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Street = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Line = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ZipCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreateAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdateAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -252,9 +252,9 @@ namespace CloudShield.Migrations
                         principalTable: "State",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Address_User_UserId",
+                        name: "FK_Address_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "User",
+                        principalTable: "Users",
                         principalColumn: "Id");
                 });
 
@@ -543,7 +543,7 @@ namespace CloudShield.Migrations
                 });
 
             migrationBuilder.InsertData(
-                table: "User",
+                table: "Users",
                 columns: new[] { "Id", "Confirm", "ConfirmToken", "CreateAt", "Dob", "Email", "IsActive", "Name", "Otp", "OtpExpires", "Password", "Phone", "ResetPasswordExpires", "ResetPasswordToken", "SurName", "UpdateAt" },
                 values: new object[] { new Guid("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7"), true, "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "jturbi@syschar.com", true, "Admin", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd", "8294627091", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) });
 
@@ -618,8 +618,7 @@ namespace CloudShield.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Address_StateId",
                 table: "Address",
-                column: "StateId",
-                unique: true);
+                column: "StateId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Address_UserId",
@@ -713,7 +712,7 @@ namespace CloudShield.Migrations
                 name: "Country");
 
             migrationBuilder.DropTable(
-                name: "User");
+                name: "Users");
         }
     }
 }

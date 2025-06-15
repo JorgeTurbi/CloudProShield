@@ -1,6 +1,7 @@
 
 using System.IO.Compression;
 using System.Linq;
+using CloudShield.Commons.Helpers;
 using CloudShield.Entities.Operations;
 using Commons;
 using DataContext;
