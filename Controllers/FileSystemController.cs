@@ -40,10 +40,14 @@ public class FileSystemController : ControllerBase
     )
     {
         if (dto is null || string.IsNullOrWhiteSpace(dto.Name))
-            return BadRequest(new ApiResponse<object>(false, "Nombre requerido", null));
+            return BadRequest(new { error = "Nombre requerido" });
 
-        var resp = await _storage.CreateFolderAsync(customerId, dto.Name, ct);
+        // Construimos la ruta completa “parent/Name”
+        var relPath = string.IsNullOrWhiteSpace(dto.ParentPath)
+            ? dto.Name
+            : $"{dto.ParentPath.TrimEnd('/')}/{dto.Name}";
 
+        var resp = await _storage.CreateFolderAsync(customerId, relPath, ct);
         return resp.Success ? StatusCode(StatusCodes.Status201Created, resp) : BadRequest(resp);
     }
 

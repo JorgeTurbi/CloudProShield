@@ -29,31 +29,32 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     /* ----------------------------------------------------------- */
     public async Task<ApiResponse<object>> CreateFolderAsync(
         Guid customerId,
-        string folder,
+        string relativePath,
         CancellationToken ct = default
     )
     {
-        // 🔐 normaliza nombre
-        folder = Regex.Replace(folder, @"[^A-Za-z0-9_\- ]", "").Trim();
-        if (string.IsNullOrWhiteSpace(folder))
-            return new ApiResponse<object>(false, "Nombre de carpeta no válido", null);
+        // normaliza y divide cada segmento   “../../”  →  “”
+        var cleaned = Regex.Replace(relativePath, @"[^A-Za-z0-9_\- /]", "").Trim().Trim('/');
+
+        if (string.IsNullOrWhiteSpace(cleaned))
+            return new(false, "Ruta no válida", null);
+
+        // nunca permitir que el primer segmento sea protegido
+        var first = cleaned.Split('/')[0];
+        var protectedNames = new[] { customerId.ToString("N"), "Documents", "Firms" };
+        if (protectedNames.Any(p => p.Equals(first, StringComparison.OrdinalIgnoreCase)))
+            return new(false, "No permitido sobre carpeta protegida", null);
 
         try
         {
-            await EnsureStructureAsync(customerId, new[] { folder }, ct);
-            _log.LogInformation("Carpeta {Folder} creada para {Customer}", folder, customerId);
-
-            return new ApiResponse<object>(true, "Carpeta creada", new { folder });
+            await EnsureStructureAsync(customerId, new[] { cleaned }, ct);
+            _log.LogInformation("Carpeta {Path} creada para el cliente {Cli}", cleaned, customerId);
+            return new(true, "Creada", new { path = cleaned });
         }
         catch (Exception ex)
         {
-            _log.LogError(
-                ex,
-                "Error al crear carpeta {Folder} para {Customer}",
-                folder,
-                customerId
-            );
-            return new ApiResponse<object>(false, "Error interno al crear carpeta", null);
+            _log.LogError(ex, "Error creando {Path} ({Cli})", cleaned, customerId);
+            return new(false, "Error interno", null);
         }
     }
 

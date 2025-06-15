@@ -12,4 +12,5 @@ public class FolderDTO
 public class NewFolderDTO
 {
     public required string Name { get; set; }
+    public string? ParentPath { get; set; }
 }

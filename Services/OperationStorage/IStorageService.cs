@@ -27,7 +27,7 @@ public interface IStorageService
     /* METADATO ← NUEVO */
     Task<ApiResponse<object>> CreateFolderAsync(
         Guid customerId,
-        string folder,
+        string relativePath,
         CancellationToken ct
     );
 
