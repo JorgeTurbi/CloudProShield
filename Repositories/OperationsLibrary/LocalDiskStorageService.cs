@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 using CloudShield.Entities.Operations;
 using DataContext;
 using Microsoft.EntityFrameworkCore;
@@ -26,82 +27,94 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     /*  MÉTODO 1: Guardar y segmentar                              */
     /* ----------------------------------------------------------- */
     public async Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
-     Guid customerId,
-     IFormFile file,
-     CancellationToken ct,
-     string? customFolder                                  // ✅ Nuevo parámetro opcional
-)
-{
-    var space = await _db
-        .Spaces.AsTracking()
-        .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
-
-    if (space is null)
+        Guid customerId,
+        IFormFile file,
+        CancellationToken ct,
+        string? customFolder // ✅ parámetro opcional
+    )
     {
-        space = new Space
+        /* ------------ 1. Obtiene o crea Space ------------------- */
+        var space = await _db
+            .Spaces.AsTracking()
+            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+        if (space is null)
         {
-            CustomerId = customerId,
-            MaxBytes = 5L * 1024 * 1024 * 1024,
-            UsedBytes = 0,
-            CreateAt = DateTime.UtcNow
+            space = new Space
+            {
+                CustomerId = customerId,
+                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
+                UsedBytes = 0,
+                CreateAt = DateTime.UtcNow,
+            };
+            await _db.Spaces.AddAsync(space, ct);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        /* ------------ 2. Verifica cuota ------------------------- */
+        if (space.UsedBytes + file.Length > space.MaxBytes)
+            return (false, "Se supera la cuota asignada");
+
+        /* ------------ 3. Resuelve carpetas ---------------------- */
+        var yearFolder = Path.Combine(_rootPath, DateTime.UtcNow.Year.ToString());
+        var safeFileName = Path.GetFileName(file.FileName);
+        var customerFolder = Path.Combine(yearFolder, customerId.ToString("N"));
+
+        // 3-a) Mime normalizado (evita null en GetCategory)
+        var ctMime = file.ContentType ?? "application/octet-stream";
+
+        // 3-b) Elegir sub-carpeta + hardening
+        string subFolder;
+        if (!string.IsNullOrWhiteSpace(customFolder))
+        {
+            // 🔐 Hardening → solo letras, números, guion, underscore, espacio
+            subFolder = Regex.Replace(customFolder, @"[^A-Za-z0-9_\- ]", "").Trim();
+            if (string.IsNullOrWhiteSpace(subFolder))
+                subFolder = "Others";
+        }
+        else
+        {
+            subFolder = GetCategory(Path.GetExtension(file.FileName), ctMime);
+        }
+
+        var finalFolder = Path.Combine(customerFolder, subFolder);
+        Directory.CreateDirectory(finalFolder);
+
+        /* ------------ 4. Copia física --------------------------- */
+        var filePath = Path.Combine(finalFolder, safeFileName);
+        var relativePath = Path.Combine(subFolder, safeFileName).Replace('\\', '/');
+
+        await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+        {
+            await file.CopyToAsync(stream, ct);
+        }
+
+        /* ------------ 5. Registra metadatos --------------------- */
+        var now = DateTime.UtcNow;
+        var meta = new FileResource
+        {
+            SpaceId = space.Id,
+            FileName = safeFileName,
+            ContentType = ctMime,
+            RelativePath = relativePath,
+            SizeBytes = file.Length,
+            CreateAt = now,
+            UpdateAt = now, // 🆕 si luego sobrescribes, actualiza aquí
         };
-        await _db.Spaces.AddAsync(space, ct);
+        await _db.FileResources.AddAsync(meta, ct);
+
+        space.UsedBytes += file.Length;
         await _db.SaveChangesAsync(ct);
+
+        _log.LogInformation(
+            "Archivo {File} guardado para {Customer} en carpeta {Folder}",
+            safeFileName,
+            customerId,
+            subFolder
+        );
+
+        return (true, relativePath);
     }
-
-    if (space.UsedBytes + file.Length > space.MaxBytes)
-        return (false, "Se supera la cuota asignada");
-
-    var safeFileName = Path.GetFileName(file.FileName);
-    var customerFolder = Path.Combine(_rootPath, customerId.ToString("N"));
-
-    // ✅ Ruta final considerando carpeta personalizada o categoría
-    string finalFolder;
-    string subFolder;
-
-    if (!string.IsNullOrWhiteSpace(customFolder))
-    {
-        subFolder = customFolder.Trim();
-    }
-    else
-    {
-        subFolder = GetCategory(Path.GetExtension(file.FileName), file.ContentType);
-    }
-
-    finalFolder = Path.Combine(customerFolder, subFolder);
-    Directory.CreateDirectory(finalFolder);
-
-    var filePath = Path.Combine(finalFolder, safeFileName);
-    var relativePath = Path.Combine(subFolder, safeFileName).Replace('\\', '/');
-
-    await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-    {
-        await file.CopyToAsync(stream, ct);
-    }
-
-    var meta = new FileResource
-    {
-        SpaceId = space.Id,
-        FileName = safeFileName,
-        ContentType = file.ContentType ?? "application/octet-stream",
-        RelativePath = relativePath,
-        SizeBytes = file.Length,
-        CreateAt = DateTime.UtcNow,
-    };
-    await _db.FileResources.AddAsync(meta, ct);
-
-    space.UsedBytes += file.Length;
-    await _db.SaveChangesAsync(ct);
-
-    _log.LogInformation(
-        "Archivo {File} guardado para {Customer} en carpeta {Folder}",
-        safeFileName,
-        customerId,
-        subFolder
-    );
-
-    return (true, relativePath);
-}
 
     /* ----------------------------------------------------------- */
     /*  MÉTODO 2: Obtener archivo por path                         */
@@ -242,7 +255,9 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         foreach (var f in folders.Distinct(StringComparer.OrdinalIgnoreCase))
             Directory.CreateDirectory(Path.Combine(customerFolder, f));
 
-        var existingSpace = await _db.Spaces.AsTracking().FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+        var existingSpace = await _db
+            .Spaces.AsTracking()
+            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
 
         if (existingSpace == null)
         {
@@ -258,10 +273,10 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             await _db.SaveChangesAsync(ct);
 
             _log.LogInformation(
-            "Space creado en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
-            customerId,
-            newSpace.MaxBytes / (1024 * 1024 * 1024)
-        );
+                "Space creado en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
+                customerId,
+                newSpace.MaxBytes / (1024 * 1024 * 1024)
+            );
         }
         else
         {
@@ -272,6 +287,10 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             );
         }
 
-        _log.LogInformation("Estructura de {CustomerId} lista en {Path}", customerId, customerFolder);
+        _log.LogInformation(
+            "Estructura de {CustomerId} lista en {Path}",
+            customerId,
+            customerFolder
+        );
     }
 }

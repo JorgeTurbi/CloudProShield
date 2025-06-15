@@ -14,184 +14,230 @@ namespace CloudShield.Controllers;
 [Authorize]
 public class FileSystemController : ControllerBase
 {
-  private readonly IFileSystemReadService _fileSystemService;
-  private readonly ILogger<FileSystemController> _logger;
+    private readonly IFileSystemReadService _fileSystemService;
+    private readonly ILogger<FileSystemController> _logger;
 
-  public FileSystemController(
-      IFileSystemReadService fileSystemService,
-      ILogger<FileSystemController> logger)
-  {
-    _fileSystemService = fileSystemService;
-    _logger = logger;
-  }
-
-  /// <summary>
-  /// Obtiene la estructura completa de carpetas de un cliente
-  /// </summary>
-  /// <param name="customerId">ID del cliente</param>
-  /// <param name="ct">Token de cancelación</param>
-  /// <returns>Estructura de carpetas del cliente</returns>
-  [HttpGet("structure")]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status200OK)]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status404NotFound)]
-  [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetCustomerFolderStructure(
-      Guid customerId,
-      CancellationToken ct = default)
-  {
-    try
+    public FileSystemController(
+        IFileSystemReadService fileSystemService,
+        ILogger<FileSystemController> logger
+    )
     {
-      _logger.LogInformation("Solicitando estructura de carpetas para cliente {CustomerId}", customerId);
-
-      var result = await _fileSystemService.GetCustomerFolderStructureAsync(customerId, ct);
-
-      if (!result.Success)
-      {
-        return result.Data == null ? NotFound(result) : BadRequest(result);
-      }
-
-      return Ok(result);
+        _fileSystemService = fileSystemService;
+        _logger = logger;
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// Obtiene la estructura completa de carpetas de un cliente
+    /// </summary>
+    /// <param name="customerId">ID del cliente</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Estructura de carpetas del cliente</returns>
+    [HttpGet("structure")]
+    [ProducesResponseType(typeof(ApiResponse<CustomerFolderStructureDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ApiResponse<CustomerFolderStructureDTO>),
+        StatusCodes.Status404NotFound
+    )]
+    [ProducesResponseType(
+        typeof(ApiResponse<CustomerFolderStructureDTO>),
+        StatusCodes.Status500InternalServerError
+    )]
+    public async Task<IActionResult> GetCustomerFolderStructure(
+        Guid customerId,
+        CancellationToken ct = default
+    )
     {
-      _logger.LogError(ex, "Error no controlado al obtener estructura para cliente {CustomerId}", customerId);
-      var errorResponse = new ApiResponse<CustomerFolderStructureDTO>(
-          false,
-          "Error interno del servidor",
-          null);
-      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-    }
-  }
+        try
+        {
+            _logger.LogInformation(
+                "Solicitando estructura de carpetas para cliente {CustomerId}",
+                customerId
+            );
 
-  /// <summary>
-  /// Obtiene todas las carpetas disponibles para un cliente
-  /// </summary>
-  /// <param name="customerId">ID del cliente</param>
-  /// <param name="ct">Token de cancelación</param>
-  /// <returns>Lista de carpetas del cliente</returns>
-  [HttpGet("folders")]
-  [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status200OK)]
-  [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status404NotFound)]
-  [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetCustomerFolders(
-      Guid customerId,
-      CancellationToken ct = default)
-  {
-    try
+            var result = await _fileSystemService.GetCustomerFolderStructureAsync(customerId, ct);
+
+            if (!result.Success)
+            {
+                return result.Data == null ? NotFound(result) : BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error no controlado al obtener estructura para cliente {CustomerId}",
+                customerId
+            );
+            var errorResponse = new ApiResponse<CustomerFolderStructureDTO>(
+                false,
+                "Error interno del servidor",
+                null
+            );
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todas las carpetas disponibles para un cliente
+    /// </summary>
+    /// <param name="customerId">ID del cliente</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Lista de carpetas del cliente</returns>
+    [HttpGet("folders")]
+    [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<FolderDTO>>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ApiResponse<List<FolderDTO>>),
+        StatusCodes.Status500InternalServerError
+    )]
+    public async Task<IActionResult> GetCustomerFolders(
+        Guid customerId,
+        CancellationToken ct = default
+    )
     {
-      _logger.LogInformation("Solicitando carpetas para cliente {CustomerId}", customerId);
+        try
+        {
+            _logger.LogInformation("Solicitando carpetas para cliente {CustomerId}", customerId);
 
-      var result = await _fileSystemService.GetCustomerFoldersAsync(customerId, ct);
+            var result = await _fileSystemService.GetCustomerFoldersAsync(customerId, ct);
 
-      if (!result.Success)
-      {
-        return NotFound(result);
-      }
+            if (!result.Success)
+            {
+                return NotFound(result);
+            }
 
-      return Ok(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error no controlado al obtener carpetas para cliente {CustomerId}",
+                customerId
+            );
+            var errorResponse = new ApiResponse<List<FolderDTO>>(
+                false,
+                "Error interno del servidor",
+                new List<FolderDTO>()
+            );
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+        }
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// Obtiene el contenido de una carpeta específica (Firms o Documents)
+    /// </summary>
+    /// <param name="customerId">ID del cliente</param>
+    /// <param name="folderName">Nombre de la carpeta (Firms o Documents)</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Contenido de la carpeta especificada</returns>
+    [HttpGet("folders/{folderName}")]
+    [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ApiResponse<FolderContentDTO>),
+        StatusCodes.Status500InternalServerError
+    )]
+    public async Task<IActionResult> GetFolderContent(
+        Guid customerId,
+        string folderName,
+        CancellationToken ct = default
+    )
     {
-      _logger.LogError(ex, "Error no controlado al obtener carpetas para cliente {CustomerId}", customerId);
-      var errorResponse = new ApiResponse<List<FolderDTO>>(
-          false,
-          "Error interno del servidor",
-          new List<FolderDTO>());
-      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-    }
-  }
+        try
+        {
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                var badRequestResponse = new ApiResponse<FolderContentDTO>(
+                    false,
+                    "El nombre de la carpeta es requerido",
+                    null
+                );
+                return BadRequest(badRequestResponse);
+            }
 
-  /// <summary>
-  /// Obtiene el contenido de una carpeta específica (Firms o Documents)
-  /// </summary>
-  /// <param name="customerId">ID del cliente</param>
-  /// <param name="folderName">Nombre de la carpeta (Firms o Documents)</param>
-  /// <param name="ct">Token de cancelación</param>
-  /// <returns>Contenido de la carpeta especificada</returns>
-  [HttpGet("folders/{folderName}")]
-  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status200OK)]
-  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status400BadRequest)]
-  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
-  [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetFolderContent(
-      Guid customerId,
-      string folderName,
-      CancellationToken ct = default)
-  {
-    try
+            _logger.LogInformation(
+                "Solicitando contenido de carpeta {FolderName} para cliente {CustomerId}",
+                folderName,
+                customerId
+            );
+
+            var result = await _fileSystemService.GetFolderContentAsync(customerId, folderName, ct);
+
+            if (!result.Success)
+            {
+                return result.Data == null ? NotFound(result) : BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error no controlado al obtener contenido de carpeta {FolderName} para cliente {CustomerId}",
+                folderName,
+                customerId
+            );
+            var errorResponse = new ApiResponse<FolderContentDTO>(
+                false,
+                "Error interno del servidor",
+                null
+            );
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todos los archivos de un cliente independientemente de la carpeta
+    /// </summary>
+    /// <param name="customerId">ID del cliente</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Lista de todos los archivos del cliente</returns>
+    [HttpGet("files")]
+    [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ApiResponse<List<FileItemDTO>>),
+        StatusCodes.Status500InternalServerError
+    )]
+    public async Task<IActionResult> GetAllCustomerFiles(
+        Guid customerId,
+        CancellationToken ct = default
+    )
     {
-      if (string.IsNullOrWhiteSpace(folderName))
-      {
-        var badRequestResponse = new ApiResponse<FolderContentDTO>(
-            false,
-            "El nombre de la carpeta es requerido",
-            null);
-        return BadRequest(badRequestResponse);
-      }
+        try
+        {
+            _logger.LogInformation(
+                "Solicitando todos los archivos para cliente {CustomerId}",
+                customerId
+            );
 
-      _logger.LogInformation(
-          "Solicitando contenido de carpeta {FolderName} para cliente {CustomerId}",
-          folderName,
-          customerId);
+            var result = await _fileSystemService.GetAllCustomerFilesAsync(customerId, ct);
 
-      var result = await _fileSystemService.GetFolderContentAsync(customerId, folderName, ct);
+            if (!result.Success)
+            {
+                return NotFound(result);
+            }
 
-      if (!result.Success)
-      {
-        return result.Data == null ? NotFound(result) : BadRequest(result);
-      }
-
-      return Ok(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error no controlado al obtener archivos para cliente {CustomerId}",
+                customerId
+            );
+            var errorResponse = new ApiResponse<List<FileItemDTO>>(
+                false,
+                "Error interno del servidor",
+                new List<FileItemDTO>()
+            );
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+        }
     }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex,
-          "Error no controlado al obtener contenido de carpeta {FolderName} para cliente {CustomerId}",
-          folderName,
-          customerId);
-      var errorResponse = new ApiResponse<FolderContentDTO>(
-          false,
-          "Error interno del servidor",
-          null);
-      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-    }
-  }
-
-  /// <summary>
-  /// Obtiene todos los archivos de un cliente independientemente de la carpeta
-  /// </summary>
-  /// <param name="customerId">ID del cliente</param>
-  /// <param name="ct">Token de cancelación</param>
-  /// <returns>Lista de todos los archivos del cliente</returns>
-  [HttpGet("files")]
-  [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status200OK)]
-  [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status404NotFound)]
-  [ProducesResponseType(typeof(ApiResponse<List<FileItemDTO>>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetAllCustomerFiles(
-      Guid customerId,
-      CancellationToken ct = default)
-  {
-    try
-    {
-      _logger.LogInformation("Solicitando todos los archivos para cliente {CustomerId}", customerId);
-
-      var result = await _fileSystemService.GetAllCustomerFilesAsync(customerId, ct);
-
-      if (!result.Success)
-      {
-        return NotFound(result);
-      }
-
-      return Ok(result);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error no controlado al obtener archivos para cliente {CustomerId}", customerId);
-      var errorResponse = new ApiResponse<List<FileItemDTO>>(
-          false,
-          "Error interno del servidor",
-          new List<FileItemDTO>());
-      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-    }
-  }
 }

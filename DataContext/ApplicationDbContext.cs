@@ -27,13 +27,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<SpaceCloud> SpacesClouds => Set<SpaceCloud>();
     public DbSet<FileResourceCloud> FileResourcesCloud => Set<FileResourceCloud>();
 
-
-
     //todo model created
 
     protected override void OnModelCreating(ModelBuilder model)
     {
-
         base.OnModelCreating(model);
 
         /* -------------------- Cambiamos User a Users para evitar conflictos en SqlServer -------------------- */
@@ -80,7 +77,6 @@ public class ApplicationDbContext : DbContext
             // Índice único para evitar duplicados dentro de un Space
             e.HasIndex(fr => new { fr.SpaceId, fr.RelativePath }).IsUnique();
         });
-
 
         /* -------------------- Space Cloud -------------------- */
         model.Entity<SpaceCloud>(e =>
@@ -742,11 +738,31 @@ public class ApplicationDbContext : DbContext
         model
             .Entity<Permissions>()
             .HasData(
-                new Permissions { Id = Guid.Parse("c5c6f0da-99e2-4e01-8d84-110985a5e5b2"), Name = "Write" },
-                new Permissions { Id = Guid.Parse("1d14a2a4-9f7e-407d-9f6e-95e7c43a9de9"), Name = "Reader" },
-                new Permissions { Id = Guid.Parse("b50eb037-cb39-4f42-bf03-d1738cc21091"), Name = "View" },
-                new Permissions { Id = Guid.Parse("8b7ab1a0-5182-4eb3-a2d7-178da4d31e1c"), Name = "Delete" },
-                new Permissions { Id = Guid.Parse("978b1712-9c5e-48cf-9c4d-6d64d5a88e18"), Name = "Update" }
+                new Permissions
+                {
+                    Id = Guid.Parse("c5c6f0da-99e2-4e01-8d84-110985a5e5b2"),
+                    Name = "Write",
+                },
+                new Permissions
+                {
+                    Id = Guid.Parse("1d14a2a4-9f7e-407d-9f6e-95e7c43a9de9"),
+                    Name = "Reader",
+                },
+                new Permissions
+                {
+                    Id = Guid.Parse("b50eb037-cb39-4f42-bf03-d1738cc21091"),
+                    Name = "View",
+                },
+                new Permissions
+                {
+                    Id = Guid.Parse("8b7ab1a0-5182-4eb3-a2d7-178da4d31e1c"),
+                    Name = "Delete",
+                },
+                new Permissions
+                {
+                    Id = Guid.Parse("978b1712-9c5e-48cf-9c4d-6d64d5a88e18"),
+                    Name = "Update",
+                }
             );
 
         //todo Role data default
@@ -770,7 +786,6 @@ public class ApplicationDbContext : DbContext
                 }
             );
 
-
         var userId = Guid.Parse("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7");
         var spaceCloudId = Guid.Parse("c36f258b-9ad3-4640-9a9b-ff9701dc9f8e");
         //todo User Data Default
@@ -793,7 +808,6 @@ public class ApplicationDbContext : DbContext
                     Dob = DateTime.MinValue, // Add default value if required
                     ResetPasswordToken = "", // Add default value if required
                     ResetPasswordExpires = DateTime.MinValue, // Add default value if required
-
                 }
             );
         model
@@ -805,7 +819,7 @@ public class ApplicationDbContext : DbContext
                     UserId = userId,
                     MaxBytes = 1073741824, // 1 GB
                     UsedBytes = 0,
-                    RowVersion = new byte[] { }
+                    RowVersion = new byte[] { },
                 }
             );
     }
