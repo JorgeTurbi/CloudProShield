@@ -782,7 +782,7 @@ public class ApplicationDbContext : DbContext
                     Id = userId, // Generate a new GUID for the user ID
                     Name = "Admin",
                     Email = "jturbi@syschar.com",
-                    Password = "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
+                    Password = "WJd8pmbNUhSKz3M0V/KT2mTO0KlCiGkTPOLdARs0WIfOKfZjObvThYTnW/WmPnXc",
                     Phone = "8294627091",
                     Confirm = true,
                     IsActive = true,
