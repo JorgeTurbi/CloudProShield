@@ -1,4 +1,3 @@
-
 using System.IO.Compression;
 using System.Linq;
 using CloudShield.Commons.Helpers;
@@ -47,7 +46,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
                 UserId = userId,
                 MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
                 UsedBytes = 0,
-                CreateAt = DateTime.UtcNow
+                CreateAt = DateTime.UtcNow,
             };
             await _db.SpacesClouds.AddAsync(space, ct);
             await _db.SaveChangesAsync(ct);
@@ -124,7 +123,10 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
         if (meta is null)
             return (false, null, null, "Archivo no registrado")!;
 
-        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), relativePath);
+        var fullPath = Path.Combine(
+            FileStoragePathResolver.UserRoot(_rootPath, userId),
+            relativePath
+        );
         if (!System.IO.File.Exists(fullPath))
             return (false, null, null, "Archivo físico no encontrado")!;
 
@@ -159,7 +161,9 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
     )
     {
         // 1) Obtiene el espacio
-        var space = await _db.SpacesClouds.AsTracking().FirstOrDefaultAsync(s => s.Id == spaceId, ct);
+        var space = await _db
+            .SpacesClouds.AsTracking()
+            .FirstOrDefaultAsync(s => s.Id == spaceId, ct);
 
         if (space is null)
             return (false, "Espacio no encontrado");
@@ -175,10 +179,11 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
 
         // 3) Construye la ruta física (evita traversal)
         var safeRelativePath = relativePath.Replace('\\', '/').TrimStart('/').Trim();
-        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, space.UserId), relativePath);
-        var normalizedRoot = Path.GetFullPath(
-            Path.Combine(_rootPath, space.UserId.ToString("N"))
+        var fullPath = Path.Combine(
+            FileStoragePathResolver.UserRoot(_rootPath, space.UserId),
+            relativePath
         );
+        var normalizedRoot = Path.GetFullPath(Path.Combine(_rootPath, space.UserId.ToString("N")));
         var normalizedPath = Path.GetFullPath(fullPath);
 
         if (!normalizedPath.StartsWith(normalizedRoot)) // intento de salir de la carpeta
@@ -202,9 +207,7 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
         return (true, null)!;
     }
 
-#pragma warning disable CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
-    public async Task<FileResourceCloud?> FindMetaAsync(
-#pragma warning restore CS8613 // Nullability of reference types in return type doesn't match implicitly implemented member.
+    public async Task<FileResourceCloud?> FindMetaAsyncUser(
         Guid userId,
         string relativePath,
         CancellationToken ct
@@ -225,56 +228,14 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task EnsureStructureAsync(
+    public async Task<byte[]> CreateFolderZipAsync(
         Guid customerId,
-        IEnumerable<string> folders,
-        CancellationToken ct = default
+        string relativePath,
+        CancellationToken ct
     )
     {
-        var yearFolder = Path.Combine(_rootPath, DateTime.UtcNow.Year.ToString());
-        var customerFolder = Path.Combine(yearFolder, customerId.ToString("N"));
-
-        Directory.CreateDirectory(customerFolder);
-
-        foreach (var f in folders.Distinct(StringComparer.OrdinalIgnoreCase))
-            Directory.CreateDirectory(Path.Combine(customerFolder, f));
-
-        var existingSpace = await _db.Spaces.AsTracking().FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
-
-        if (existingSpace == null)
-        {
-            var newSpace = new Space
-            {
-                CustomerId = customerId,
-                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
-                UsedBytes = 0,
-                CreateAt = DateTime.UtcNow,
-            };
-
-            await _db.Spaces.AddAsync(newSpace, ct);
-            await _db.SaveChangesAsync(ct);
-
-            _log.LogInformation(
-            "Space creado en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
-            customerId,
-            newSpace.MaxBytes / (1024 * 1024 * 1024)
-        );
-        }
-        else
-        {
-            _log.LogInformation(
-                "Space ya existe en BD para cliente {CustomerId} con cuota de {MaxGB} GB",
-                customerId,
-                existingSpace.MaxBytes / (1024 * 1024 * 1024)
-            );
-        }
-
-        _log.LogInformation("Estructura de {CustomerId} lista en {Path}", customerId, customerFolder);
-    }
-
-    public async Task<byte[]> CreateFolderZipAsync(Guid customerId, string relativePath, CancellationToken ct)
-    {
-        var folderPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath).Replace("\\", "/");
+        var folderPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath)
+            .Replace("\\", "/");
 
         if (!Directory.Exists(folderPath))
             return null;
@@ -296,5 +257,4 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
 
         return memoryStream.ToArray();
     }
-
 }

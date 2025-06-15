@@ -119,79 +119,76 @@ public class FileSystemRead_Repository : IFileSystemReadService
 
     public async Task<ApiResponse<FolderContentDTO>> GetFolderContentAsync(
         Guid customerId,
-        string folderName,
+        string folderPath,
         CancellationToken ct = default
     )
     {
-        try
+        folderPath = folderPath.Trim('/'); // “Cargar/Cagrando”
+        var currentYear = DateTime.UtcNow.Year.ToString();
+        var basePath = Path.Combine(_rootPath, currentYear, customerId.ToString("N"), folderPath);
+
+        /* 2.a ► SUB-CARPETAS físicas */
+        var subDirs = Directory.Exists(basePath)
+            ? Directory.GetDirectories(basePath)
+            : Array.Empty<string>();
+
+        /* 2.b ► METADATOS de archivos SÓLO del nivel actual */
+        var space = await _context
+            .Spaces.AsNoTracking()
+            .Include(s => s.FileResources)
+            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+        var subFolderDTOs = subDirs
+            .Select(dir =>
+            {
+                var dirName = Path.GetFileName(dir); // “2024”, “Fotos”
+                // Archivos que viven EN cualquier nivel dentro de esa sub-carpeta
+                var filesBelow = space
+                    .FileResources.Where(f =>
+                        f.RelativePath.StartsWith(
+                            $"{folderPath.TrimEnd('/')}/{dirName}/",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    .ToList();
+
+                return new FolderDTO
+                {
+                    Name = dirName,
+                    FullPath = dir,
+                    CreatedAt = Directory.GetCreationTime(dir),
+                    FileCount = filesBelow.Count,
+                    TotalSizeBytes = filesBelow.Sum(f => f.SizeBytes),
+                };
+            })
+            .ToList();
+
+        if (space is null)
+            return new(false, "No se encontró espacio para el cliente", null);
+
+        string levelDir = folderPath.Replace('\\', '/');
+
+        var filesInFolder = space
+            .FileResources.Where(f =>
+                Path.GetDirectoryName(f.RelativePath)!
+                    .Replace('\\', '/')
+                    .Equals(levelDir, StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
+
+        var fileItemDTOs = _mapper.Map<List<FileItemDTO>>(filesInFolder);
+
+        var result = new FolderContentDTO
         {
-            if (string.IsNullOrWhiteSpace(folderName))
-            {
-                return new ApiResponse<FolderContentDTO>(
-                    false,
-                    "El nombre de la carpeta es requerido",
-                    null
-                );
-            }
+            FolderName = Path.GetFileName(folderPath),
+            FolderPath = $"{currentYear}/{customerId:N}/{folderPath}",
+            SubFolders = subFolderDTOs, // 👈 se añade
+            Files = fileItemDTOs,
+            TotalFiles = fileItemDTOs.Count,
+            TotalSizeBytes = fileItemDTOs.Sum(f => f.SizeBytes),
+        };
 
-            var space = await _context
-                .Spaces.AsNoTracking()
-                .Include(s => s.FileResources)
-                .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
-
-            if (space == null)
-            {
-                return new ApiResponse<FolderContentDTO>(
-                    false,
-                    "No se encontró espacio para el cliente",
-                    null
-                );
-            }
-
-            var filesInFolder = space
-                .FileResources.Where(f =>
-                    f.RelativePath.StartsWith(folderName + "/", StringComparison.OrdinalIgnoreCase)
-                )
-                .ToList();
-
-            var fileItemDTOs = _mapper.Map<List<FileItemDTO>>(filesInFolder);
-
-            var result = new FolderContentDTO
-            {
-                FolderName = folderName,
-                FolderPath = $"{DateTime.UtcNow.Year}/{customerId:N}/{folderName}",
-                Files = fileItemDTOs,
-                TotalFiles = fileItemDTOs.Count,
-                TotalSizeBytes = fileItemDTOs.Sum(f => f.SizeBytes),
-            };
-
-            _logger.LogInformation(
-                "Contenido de carpeta {FolderName} obtenido para cliente {CustomerId}: {FileCount} archivos",
-                folderName,
-                customerId,
-                result.TotalFiles
-            );
-
-            return new ApiResponse<FolderContentDTO>(
-                true,
-                $"Contenido de {folderName} obtenido correctamente. {result.TotalFiles} archivos encontrados",
-                result
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error al obtener contenido de carpeta {FolderName} para cliente {CustomerId}",
-                folderName,
-                customerId
-            );
-            return new ApiResponse<FolderContentDTO>(
-                false,
-                "Error interno al obtener contenido de carpeta",
-                null
-            );
-        }
+        return new(true, $"Contenido de {folderPath} ({result.TotalFiles} archivos)", result);
     }
 
     public async Task<ApiResponse<List<FolderDTO>>> GetCustomerFoldersAsync(

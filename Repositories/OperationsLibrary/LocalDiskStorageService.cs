@@ -34,17 +34,20 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     )
     {
         // normaliza y divide cada segmento   “../../”  →  “”
-        var cleaned = Regex.Replace(relativePath, @"[^A-Za-z0-9_\- /]", "").Trim().Trim('/');
-
+        var cleaned = SanitizeFolder(relativePath);
         if (string.IsNullOrWhiteSpace(cleaned))
             return new(false, "Ruta no válida", null);
 
-        // nunca permitir que el primer segmento sea protegido
-        var first = cleaned.Split('/')[0];
-        var protectedNames = new[] { customerId.ToString("N"), "Documents", "Firms" };
-        if (protectedNames.Any(p => p.Equals(first, StringComparison.OrdinalIgnoreCase)))
-            return new(false, "No permitido sobre carpeta protegida", null);
+        var segments = cleaned.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var first = segments[0];
+        var protectedNames = new[] { "Documents", "Firms", customerId.ToString("N") };
 
+        // ⬇️  sólo prohibimos si se intenta crear/modificar el root
+        if (
+            protectedNames.Contains(first, StringComparer.OrdinalIgnoreCase)
+            && segments.Length == 1
+        )
+            return new(false, "No permitido sobre carpeta protegida", null);
         try
         {
             await EnsureStructureAsync(customerId, new[] { cleaned }, ct);
@@ -68,12 +71,19 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
     )
     {
         // 🔐 normaliza nombre y prohibe carpetas protegidas
-        folder = Regex.Replace(folder ?? "", @"[^A-Za-z0-9_\- ]", "").Trim();
+        folder = SanitizeFolder(folder);
         if (string.IsNullOrWhiteSpace(folder))
             return (false, "Nombre de carpeta no válido");
 
+        var segments = folder.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var firstSeg = segments.FirstOrDefault();
         var protectedNames = new[] { "Documents", "Firms", customerId.ToString("N") };
-        if (protectedNames.Any(p => p.Equals(folder, StringComparison.OrdinalIgnoreCase)))
+
+        // ⛔ NO se puede borrar la carpeta raíz protegida
+        if (
+            segments.Length == 1
+            && protectedNames.Any(p => p.Equals(firstSeg, StringComparison.OrdinalIgnoreCase))
+        )
             return (false, "No se permite eliminar esa carpeta");
 
         // 1. Busca espacio y archivos dentro del folder
@@ -93,6 +103,11 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         // 2. Borra registros + resta bytes
         _db.FileResources.RemoveRange(toDelete);
         space.UsedBytes = Math.Max(space.UsedBytes - toDelete.Sum(f => f.SizeBytes), 0);
+        if (toDelete.Any())
+        {
+            _db.FileResources.RemoveRange(toDelete);
+            space.UsedBytes = Math.Max(space.UsedBytes - toDelete.Sum(f => f.SizeBytes), 0);
+        }
 
         // 3. Borra físicamente la carpeta (año-actual)
         var yearPath = Path.Combine(_rootPath, DateTime.UtcNow.Year.ToString());
@@ -151,7 +166,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         if (!string.IsNullOrWhiteSpace(customFolder))
         {
             // 🔐 Hardening → solo letras, números, guion, underscore, espacio
-            subFolder = Regex.Replace(customFolder, @"[^A-Za-z0-9_\- ]", "").Trim();
+            subFolder = SanitizeFolder(customFolder);
             if (string.IsNullOrWhiteSpace(subFolder))
                 subFolder = "Others";
         }
@@ -160,12 +175,17 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             subFolder = GetCategory(Path.GetExtension(file.FileName), ctMime);
         }
 
-        var finalFolder = Path.Combine(customerFolder, subFolder);
+        var finalFolder = Path.Combine(
+            new[] { customerFolder }
+                .Concat(subFolder.Split('/', StringSplitOptions.RemoveEmptyEntries))
+                .ToArray()
+        );
+
         Directory.CreateDirectory(finalFolder);
 
         /* ------------ 4. Copia física --------------------------- */
         var filePath = Path.Combine(finalFolder, safeFileName);
-        var relativePath = Path.Combine(subFolder, safeFileName).Replace('\\', '/');
+        var relativePath = $"{subFolder}/{safeFileName}".TrimStart('/').Replace('\\', '/');
 
         await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
         {
@@ -407,10 +427,15 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         var yearFolder = Path.Combine(_rootPath, DateTime.UtcNow.Year.ToString());
         var customerFolder = Path.Combine(yearFolder, customerId.ToString("N"));
 
-        Directory.CreateDirectory(customerFolder);
-
         foreach (var f in folders.Distinct(StringComparer.OrdinalIgnoreCase))
-            Directory.CreateDirectory(Path.Combine(customerFolder, f));
+        {
+            var path = Path.Combine(
+                new[] { customerFolder }
+                    .Concat(f.Split('/', StringSplitOptions.RemoveEmptyEntries))
+                    .ToArray()
+            );
+            Directory.CreateDirectory(path);
+        }
 
         var existingSpace = await _db
             .Spaces.AsTracking()
@@ -449,5 +474,19 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             customerId,
             customerFolder
         );
+    }
+
+    // Helper
+    private static string SanitizeFolder(string path)
+    {
+        // deja pasar / para subcarpetas, pero quita el resto
+        path = Regex
+            .Replace(path ?? "", @"[^A-Za-z0-9_\- /]", "")
+            .Replace('\\', '/')
+            .Replace("//", "/")
+            .Trim('/', ' ');
+        if (path.Contains("..")) // anti-traversal
+            return string.Empty;
+        return path;
     }
 }
