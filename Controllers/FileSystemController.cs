@@ -47,6 +47,19 @@ public class FileSystemController : ControllerBase
         return resp.Success ? StatusCode(StatusCodes.Status201Created, resp) : BadRequest(resp);
     }
 
+    [HttpDelete("folders/{folderName}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteFolder(
+        Guid customerId,
+        string folderName,
+        CancellationToken ct = default
+    )
+    {
+        var (ok, reason) = await _storage.DeleteFolderAsync(customerId, folderName, ct);
+        return ok ? NoContent() : BadRequest(new { error = reason });
+    }
+
     /// <summary>
     /// Obtiene la estructura completa de carpetas de un cliente
     /// </summary>

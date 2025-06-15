@@ -30,5 +30,17 @@ public interface IStorageService
         string folder,
         CancellationToken ct
     );
+
+    /// <summary>Elimina una carpeta completa (salvo nativas).</summary>
+    Task<(bool ok, string reason)> DeleteFolderAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct = default
+    );
+    Task<(bool ok, Stream content, string reason)> GetFolderZipAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct
+    );
     Task<FileResource> FindMetaAsync(Guid customerId, string relativePath, CancellationToken ct);
 }

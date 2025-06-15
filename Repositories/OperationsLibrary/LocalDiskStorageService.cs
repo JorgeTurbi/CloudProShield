@@ -1,4 +1,4 @@
-using System.Linq;
+using System.IO.Compression;
 using System.Text.RegularExpressions;
 using CloudShield.Entities.Operations;
 using Commons;
@@ -55,6 +55,54 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             );
             return new ApiResponse<object>(false, "Error interno al crear carpeta", null);
         }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  NUEVO: Eliminación de carpetas                                    */
+    /* ------------------------------------------------------------------ */
+    public async Task<(bool ok, string reason)> DeleteFolderAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct = default
+    )
+    {
+        // 🔐 normaliza nombre y prohibe carpetas protegidas
+        folder = Regex.Replace(folder ?? "", @"[^A-Za-z0-9_\- ]", "").Trim();
+        if (string.IsNullOrWhiteSpace(folder))
+            return (false, "Nombre de carpeta no válido");
+
+        var protectedNames = new[] { "Documents", "Firms", customerId.ToString("N") };
+        if (protectedNames.Any(p => p.Equals(folder, StringComparison.OrdinalIgnoreCase)))
+            return (false, "No se permite eliminar esa carpeta");
+
+        // 1. Busca espacio y archivos dentro del folder
+        var space = await _db
+            .Spaces.Include(s => s.FileResources)
+            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+        if (space == null)
+            return (false, "Espacio no encontrado");
+
+        var toDelete = space
+            .FileResources.Where(f =>
+                f.RelativePath.StartsWith(folder + "/", StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
+
+        // 2. Borra registros + resta bytes
+        _db.FileResources.RemoveRange(toDelete);
+        space.UsedBytes = Math.Max(space.UsedBytes - toDelete.Sum(f => f.SizeBytes), 0);
+
+        // 3. Borra físicamente la carpeta (año-actual)
+        var yearPath = Path.Combine(_rootPath, DateTime.UtcNow.Year.ToString());
+        var dirPath = Path.Combine(yearPath, customerId.ToString("N"), folder);
+
+        if (Directory.Exists(dirPath))
+            Directory.Delete(dirPath, recursive: true);
+
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Carpeta {Folder} eliminada para {Customer}", folder, customerId);
+        return (true, null);
     }
 
     /* ----------------------------------------------------------- */
@@ -174,7 +222,15 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
         if (meta is null)
             return (false, null, null, "Archivo no registrado")!;
 
-        var fullPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath);
+        var safeRelativePath = relativePath.Replace('\\', '/').TrimStart('/').Trim();
+
+        var yearFolder = meta.CreateAt.Year.ToString();
+        var fullPath = Path.Combine(
+            _rootPath,
+            yearFolder,
+            space.CustomerId.ToString("N"),
+            safeRelativePath
+        );
         if (!System.IO.File.Exists(fullPath))
             return (false, null, null, "Archivo físico no encontrado")!;
 
@@ -225,10 +281,17 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
 
         // 3) Construye la ruta física (evita traversal)
         var safeRelativePath = relativePath.Replace('\\', '/').TrimStart('/').Trim();
-        var fullPath = Path.Combine(_rootPath, space.CustomerId.ToString("N"), safeRelativePath);
-        var normalizedRoot = Path.GetFullPath(
-            Path.Combine(_rootPath, space.CustomerId.ToString("N"))
+        var yearFolder = meta.CreateAt.Year.ToString();
+        var fullPath = Path.Combine(
+            _rootPath,
+            yearFolder,
+            space.CustomerId.ToString("N"),
+            safeRelativePath
         );
+
+        var customerRoot = Path.Combine(_rootPath, yearFolder, space.CustomerId.ToString("N"));
+        var normalizedRoot = Path.GetFullPath(customerRoot) + Path.DirectorySeparatorChar;
+
         var normalizedPath = Path.GetFullPath(fullPath);
 
         if (!normalizedPath.StartsWith(normalizedRoot)) // intento de salir de la carpeta
@@ -273,6 +336,65 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             .FileResources.AsNoTracking()
             .Where(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<(bool ok, Stream content, string reason)> GetFolderZipAsync(
+        Guid customerId,
+        string folder,
+        CancellationToken ct = default
+    )
+    {
+        // 🔐 sanitizamos carpeta para evitar traversal
+        folder = Regex.Replace(folder ?? "", @"[^A-Za-z0-9_\- ]", "").Trim();
+        if (string.IsNullOrWhiteSpace(folder))
+            return (false, null, "Nombre de carpeta no válido");
+
+        // 1) buscamos el Space y todos los archivos que empiecen por folder/
+        var space = await _db
+            .Spaces.AsNoTracking()
+            .Include(s => s.FileResources)
+            .FirstOrDefaultAsync(s => s.CustomerId == customerId, ct);
+
+        if (space is null)
+            return (false, null, "Espacio no encontrado");
+
+        var items = space
+            .FileResources.Where(f =>
+                f.RelativePath.StartsWith(folder + "/", StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
+
+        if (!items.Any())
+            return (false, null, "Carpeta vacía o inexistente");
+
+        // 2) creamos el ZIP en memoria (podrías usar un temp-file si prefieres)
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var meta in items)
+            {
+                // ruta física (incluye año)
+                var yearFolder = meta.CreateAt.Year.ToString();
+                var fullPath = Path.Combine(
+                    _rootPath,
+                    yearFolder,
+                    customerId.ToString("N"),
+                    meta.RelativePath.Replace('\\', '/')
+                );
+
+                if (System.IO.File.Exists(fullPath))
+                {
+                    // dentro del zip queremos la ruta relativa “Firms/xxx.ext”
+                    zip.CreateEntryFromFile(
+                        fullPath,
+                        meta.RelativePath.Replace('\\', '/'),
+                        CompressionLevel.Fastest
+                    );
+                }
+            }
+        }
+        ms.Position = 0;
+        return (true, ms, null);
     }
 
     public async Task EnsureStructureAsync(

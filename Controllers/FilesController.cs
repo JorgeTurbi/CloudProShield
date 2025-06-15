@@ -57,11 +57,11 @@ public class FilesController : ControllerBase
         CancellationToken ct
     )
     {
-        if (string.IsNullOrWhiteSpace(relativePath))
-            return BadRequest(new { error = "relativePath requerido." });
+        relativePath = Uri.UnescapeDataString(relativePath).Replace('\\', '/').TrimStart('/');
 
         // Recupera el tamaño registrado para ajustar UsedBytes:
         var meta = await _storage.FindMetaAsync(customerId, relativePath, ct);
+
         if (meta is null)
             return NotFound(new { error = "Archivo no encontrado." });
 
@@ -76,7 +76,7 @@ public class FilesController : ControllerBase
     }
 
     /* -------------------------------------------------------- */
-    /*  GET: Descargar (opcional, útil para pruebas rápidas)    */
+    /*  GET: Descargar archivos individuales                    */
     /* -------------------------------------------------------- */
     [HttpGet("{*relativePath}")]
     public async Task<IActionResult> Download(
@@ -85,14 +85,11 @@ public class FilesController : ControllerBase
         CancellationToken ct
     )
     {
-        // 1) Decodificamos %2F, espacios, tildes, etc.
-        var decodedPath = Uri.UnescapeDataString(relativePath);
+        relativePath = Uri.UnescapeDataString(relativePath).Replace('\\', '/').TrimStart('/');
 
-        // 2) (Opcional) Normaliza para evitar traversal
-        decodedPath = decodedPath.Replace('\\', '/').TrimStart('/');
         var (ok, stream, contentType, reason) = await _storage.GetFileAsync(
             customerId,
-            decodedPath,
+            relativePath,
             ct
         );
 
@@ -100,5 +97,25 @@ public class FilesController : ControllerBase
             return NotFound(new { error = reason });
 
         return File(stream!, contentType ?? MediaTypeNames.Application.Octet);
+    }
+
+    /// <summary>
+    /// Descarga una carpeta del cliente en formato .zip
+    /// </summary>
+    [HttpGet("folders/{folderName}/zip")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadFolderZip(
+        Guid customerId,
+        string folderName,
+        CancellationToken ct = default
+    )
+    {
+        var (ok, stream, reason) = await _storage.GetFolderZipAsync(customerId, folderName, ct);
+
+        if (!ok)
+            return NotFound(new { error = reason });
+
+        return File(stream!, "application/zip", $"{folderName}.zip");
     }
 }
