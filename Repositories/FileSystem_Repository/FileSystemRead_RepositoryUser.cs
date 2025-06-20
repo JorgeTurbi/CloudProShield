@@ -27,7 +27,7 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
     _logger = logger;
     _mapper = mapper;
     _configuration = configuration;
-    _rootPath = _configuration["Storage:RootPath"] ?? "storage";
+    _rootPath = _configuration["Storage:RootPath"] ?? "StorageCloud";
   }
 
   public async Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
@@ -49,53 +49,44 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
             null);
       }
 
-      var currentYear = DateTime.UtcNow.Year.ToString();
-      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
-
-      var result = new UserFolderStructureDTO
+      var userRoot = FileStoragePathResolver.UserRoot(_rootPath, UserId);
+      var dto = new UserFolderStructureDTO
       {
         UserId = UserId,
-        Year = currentYear,
+        Year = DateTime.UtcNow.Year.ToString(),
         UsedBytes = space.UsedBytes,
         MaxBytes = space.MaxBytes,
         TotalFiles = space.FileResourcesCloud.Count,
-        TotalSizeBytes = space.FileResourcesCloud.Sum(f => f.SizeBytes)
+        TotalSizeBytes = space.FileResourcesCloud.Sum(f => f.SizeBytes),
+        Folders = Directory.Exists(userRoot)
+              ? Directory.GetDirectories(userRoot)
+                  .Select(dir =>
+                  {
+                    var name = Path.GetFileName(dir);
+                    var fIn = space.FileResourcesCloud
+                          .Where(f => f.RelativePath.StartsWith(name + "/")).ToList();
+
+                    return new FolderDTO
+                    {
+                      Name = name,
+                      FullPath = dir,
+                      CreatedAt = Directory.GetCreationTime(dir),
+                      FileCount = fIn.Count,
+                      TotalSizeBytes = fIn.Sum(f => f.SizeBytes)
+                    };
+                  }).ToList()
+              : new()
       };
-
-      if (Directory.Exists(userPath))
-      {
-        var folders = new List<FolderDTO>();
-        var subDirectories = Directory.GetDirectories(userPath);
-
-        foreach (var dirPath in subDirectories)
-        {
-          var dirName = Path.GetFileName(dirPath);
-          var filesInFolder = space.FileResourcesCloud
-              .Where(f => f.RelativePath.StartsWith(dirName + "/"))
-              .ToList();
-
-          folders.Add(new FolderDTO
-          {
-            Name = dirName,
-            FullPath = dirPath,
-            CreatedAt = Directory.GetCreationTime(dirPath),
-            FileCount = filesInFolder.Count,
-            TotalSizeBytes = filesInFolder.Sum(f => f.SizeBytes)
-          });
-        }
-
-        result.Folders = folders;
-      }
 
       _logger.LogInformation(
           "Estructura de carpetas obtenida para cliente {UserId}: {FolderCount} carpetas",
           UserId,
-          result.Folders.Count);
+          dto.Folders.Count);
 
       return new ApiResponse<UserFolderStructureDTO>(
           true,
-          $"Estructura obtenida correctamente. {result.Folders.Count} carpetas encontradas",
-          result);
+          $"Estructura obtenida correctamente. {dto.Folders.Count} carpetas encontradas",
+          dto);
     }
     catch (Exception ex)
     {

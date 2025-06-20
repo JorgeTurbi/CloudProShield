@@ -37,32 +37,22 @@ public class FileSystemControllerUser : ControllerBase
   [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<UserFolderStructureDTO>), StatusCodes.Status500InternalServerError)]
-  public async Task<IActionResult> GetUserFolderStructure(
-      Guid userId,
-      CancellationToken ct = default)
+  public async Task<IActionResult> GetUserFolderStructure(CancellationToken ct = default)
   {
-    try
-    {
-      _logger.LogInformation("Solicitando estructura de carpetas para usuario {UserId}", userId);
+    // 1) Extraemos el GUID del token
+    if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+      return Unauthorized(new ApiResponse<UserFolderStructureDTO>(false, "Token sin ID"));
 
-      var result = await _fileSystemService.GetUserFolderStructureAsync(userId, ct);
+    _logger.LogInformation("Solicitando estructura de carpetas para usuario {UserId}", userId);
 
-      if (!result.Success)
-      {
-        return result.Data == null ? NotFound(result) : BadRequest(result);
-      }
+    // 2) Llamamos al servicio
+    var result = await _fileSystemService.GetUserFolderStructureAsync(userId, ct);
 
-      return Ok(result);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error no controlado al obtener estructura para usuario {UserId}", userId);
-      var errorResponse = new ApiResponse<UserFolderStructureDTO>(
-          false,
-          "Error interno del servidor",
-          null);
-      return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
-    }
+    // 3) Respondemos
+    if (!result.Success)
+      return result.Data == null ? NotFound(result) : BadRequest(result);
+
+    return Ok(result);
   }
 
   /// <summary>
@@ -313,7 +303,7 @@ public class FileSystemControllerUser : ControllerBase
     }
 
 
-    
+
 
   }
 

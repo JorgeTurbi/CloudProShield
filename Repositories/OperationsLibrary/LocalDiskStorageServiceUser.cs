@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CloudShield.Commons.Helpers;
 using CloudShield.Entities.Operations;
 using Commons;
@@ -20,139 +21,143 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
         ILogger<LocalDiskStorageServiceUser> log
     )
     {
-        _rootPath = cfg["Storage:RootPath"] ?? "storage"; // configurable
+        _rootPath = cfg["Storage:RootPath"] ?? "StorageCloud"; // configurable
         _db = db;
         _log = log;
     }
 
-    /* ----------------------------------------------------------- */
-    /*  MÉTODO 1: Guardar y segmentar                              */
-    /* ----------------------------------------------------------- */
-    public async Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
+    /* ====================================================== */
+    /*  MÉTODO 0 · ESTRUCTURA (re-uso)                        */
+    /* ====================================================== */
+    private async Task EnsureStructureAsync(
         Guid userId,
-        IFormFile file,
-        CancellationToken ct
+        IEnumerable<string> extraFolders,
+        CancellationToken ct = default
     )
     {
-        // 1) Obtiene (o crea) el espacio
-        var space = await _db
-            .SpacesClouds.AsTracking()
-            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        var userRoot = FileStoragePathResolver.UserRoot(_rootPath, userId);
 
-        if (space is null)
+        // Crea raíz + subcarpetas
+        Directory.CreateDirectory(userRoot);
+        foreach (var seg in extraFolders.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var dir = Path.Combine(
+                new[] { userRoot }.Concat(seg.Split('/', StringSplitOptions.RemoveEmptyEntries)).ToArray()
+            );
+            Directory.CreateDirectory(dir);
+        }
+
+        // Garantiza SpaceCloud
+        var space = await _db.SpacesClouds.FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        if (space == null)
         {
             space = new SpaceCloud
             {
                 UserId = userId,
-                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB
+                MaxBytes = 5L * 1024 * 1024 * 1024, // 5 GB por defecto
                 UsedBytes = 0,
                 CreateAt = DateTime.UtcNow,
+                UpdateAt = DateTime.UtcNow,
+                RowVersion = Array.Empty<byte>()
             };
             await _db.SpacesClouds.AddAsync(space, ct);
             await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    /* ====================================================== */
+    /*  MÉTODO 1 · SAVE                                       */
+    /* ====================================================== */
+    public async Task<(bool ok, string relativePathOrReason)> SaveFileAsync(
+        Guid userId,
+        IFormFile file,
+        CancellationToken ct,
+        string? customFolder = null
+    )
+    {
+        // 1) SpaceCloud
+        var space = await _db.SpacesClouds.FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        if (space == null)
+        {
+            await EnsureStructureAsync(userId, Array.Empty<string>(), ct);
+            space = await _db.SpacesClouds.FirstAsync(s => s.UserId == userId, ct);
         }
 
         // 2) Cuota
         if (space.UsedBytes + file.Length > space.MaxBytes)
             return (false, "Se supera la cuota asignada");
 
-        // 3) Segmentación por tipo
-        var category = GetCategory(Path.GetExtension(file.FileName), file.ContentType);
-        var userFolder = FileStoragePathResolver.UserRoot(_rootPath, userId);
-        Directory.CreateDirectory(userFolder);
+        // 3) Carpetas
+        var category = string.IsNullOrWhiteSpace(customFolder)
+            ? GetCategory(Path.GetExtension(file.FileName), file.ContentType ?? "")
+            : SanitizeFolder(customFolder);
 
-        var categoryFolder = Path.Combine(userFolder, category);
-        Directory.CreateDirectory(categoryFolder);
+        var userRoot = FileStoragePathResolver.UserRoot(_rootPath, userId);
+        var finalFolder = Path.Combine(userRoot, category);
+        Directory.CreateDirectory(finalFolder);
 
-        var safeFileName = Path.GetFileName(file.FileName);
-        var filePath = Path.Combine(categoryFolder, safeFileName);
-        var relativePath = $"{category}/{safeFileName}";
+        var safeName = Path.GetFileName(file.FileName);
+        var fullPath = Path.Combine(finalFolder, safeName);
+        var relativePath = $"{category}/{safeName}";
 
-        // 4) Guarda en disco
-        await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-        {
-            await file.CopyToAsync(stream, ct);
-        }
+        await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+            await file.CopyToAsync(fs, ct);
 
-        // 5) Guarda metadatos
+        // 4) Metadatos
         var meta = new FileResourceCloud
         {
             SpaceId = space.Id,
-            FileName = safeFileName,
+            FileName = safeName,
             ContentType = file.ContentType ?? "application/octet-stream",
             RelativePath = relativePath,
             SizeBytes = file.Length,
             CreateAt = DateTime.UtcNow,
+            UpdateAt = DateTime.UtcNow
         };
         await _db.FileResourcesCloud.AddAsync(meta, ct);
 
         space.UsedBytes += file.Length;
+        space.UpdateAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        _log.LogInformation(
-            "Archivo {File} ({Cat}) guardado para {User}",
-            safeFileName,
-            category,
-            userId
-        );
-
+        _log.LogInformation("📥 {File} guardado para usuario {UserId}", safeName, userId);
         return (true, relativePath);
     }
 
-    /* ----------------------------------------------------------- */
-    /*  MÉTODO 2: Obtener archivo por path                         */
-    /* ----------------------------------------------------------- */
+    /* ====================================================== */
+    /*  MÉTODO 2 · GET FILE                                   */
+    /* ====================================================== */
     public async Task<(bool ok, Stream content, string contentType, string reason)> GetFileAsync(
         Guid userId,
         string relativePath,
         CancellationToken ct
     )
     {
-        var space = await _db
-            .SpacesClouds.AsNoTracking()
+        var space = await _db.SpacesClouds
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
-        if (space is null)
+        if (space == null)
             return (false, null, null, "Espacio no encontrado")!;
 
-        // Verifica que el archivo pertenezca al cliente
-        var meta = await _db
-            .FileResourcesCloud.AsNoTracking()
-            .Where(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath)
-            .FirstOrDefaultAsync(ct);
-        if (meta is null)
+        var meta = await _db.FileResourcesCloud
+            .AsNoTracking()
+            .FirstOrDefaultAsync(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath, ct);
+
+        if (meta == null)
             return (false, null, null, "Archivo no registrado")!;
 
-        var fullPath = Path.Combine(
-            FileStoragePathResolver.UserRoot(_rootPath, userId),
-            relativePath
-        );
-        if (!System.IO.File.Exists(fullPath))
+        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), relativePath);
+        if (!File.Exists(fullPath))
             return (false, null, null, "Archivo físico no encontrado")!;
 
         var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         return (true, stream, meta.ContentType, null)!;
     }
 
-    /* ----------------------------------------------------------- */
-    /*  Utilitario: categorizar                                    */
-    /* ----------------------------------------------------------- */
-    private static string GetCategory(string extension, string contentType)
-    {
-        extension = extension.ToLowerInvariant();
-
-        return extension switch
-        {
-            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => "images",
-            ".mp4" or ".mkv" or ".mov" or ".avi" => "videos",
-            ".pdf" or ".doc" or ".docx" or ".xls" or ".xlsx" or ".pptx" => "docs",
-            ".zip" or ".rar" or ".7z" or ".tar" => "archives",
-            _ when contentType?.StartsWith("image/") == true => "images",
-            _ when contentType?.StartsWith("video/") == true => "videos",
-            _ => "others",
-        };
-    }
-
+    /* ====================================================== */
+    /*  MÉTODO 3 · DELETE FILE                                */
+    /* ====================================================== */
     public async Task<(bool ok, string reason)> DeleteFileAsync(
         Guid spaceId,
         string relativePath,
@@ -160,101 +165,185 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
         CancellationToken ct
     )
     {
-        // 1) Obtiene el espacio
-        var space = await _db
-            .SpacesClouds.AsTracking()
-            .FirstOrDefaultAsync(s => s.Id == spaceId, ct);
+        var space = await _db.SpacesClouds.FirstOrDefaultAsync(s => s.Id == spaceId, ct);
+        if (space == null) return (false, "Espacio no encontrado");
 
-        if (space is null)
-            return (false, "Espacio no encontrado");
+        var meta = await _db.FileResourcesCloud
+            .FirstOrDefaultAsync(fr => fr.SpaceId == spaceId && fr.RelativePath == relativePath, ct);
 
-        // 2) Busca el metadato del archivo
-        var meta = await _db.FileResourcesCloud.FirstOrDefaultAsync(
-            fr => fr.SpaceId == spaceId && fr.RelativePath == relativePath,
-            ct
-        );
+        if (meta == null) return (false, "Archivo no registrado");
 
-        if (meta is null)
-            return (false, "Archivo no registrado");
+        var safeRel = relativePath.Replace('\\', '/').TrimStart('/');
+        var fullPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, space.UserId), safeRel);
 
-        // 3) Construye la ruta física (evita traversal)
-        var safeRelativePath = relativePath.Replace('\\', '/').TrimStart('/').Trim();
-        var fullPath = Path.Combine(
-            FileStoragePathResolver.UserRoot(_rootPath, space.UserId),
-            relativePath
-        );
-        var normalizedRoot = Path.GetFullPath(Path.Combine(_rootPath, space.UserId.ToString("N")));
-        var normalizedPath = Path.GetFullPath(fullPath);
+        if (File.Exists(fullPath)) File.Delete(fullPath);
 
-        if (!normalizedPath.StartsWith(normalizedRoot)) // intento de salir de la carpeta
-            return (false, "Ruta no válida");
-
-        // 4) Borra el archivo físico
-        if (File.Exists(normalizedPath))
-            File.Delete(normalizedPath);
-
-        // 5) Actualiza UsedBytes y borra metadato
         space.UsedBytes = Math.Max(space.UsedBytes - fileBytes, 0);
         _db.FileResourcesCloud.Remove(meta);
-
         await _db.SaveChangesAsync(ct);
 
-        _log.LogInformation(
-            "Archivo {RelPath} eliminado de Space {SpaceId}",
-            relativePath,
-            spaceId
-        );
-        return (true, null)!;
+        _log.LogInformation("🗑️  {Rel} eliminado (usuario {Usr})", relativePath, space.UserId);
+        return (true, null);
     }
 
+    /* ====================================================== */
+    /*  MÉTODO 4 · CREATE FOLDER                              */
+    /* ====================================================== */
+    public async Task<ApiResponse<object>> CreateFolderAsync(
+        Guid userId,
+        string relativePath,
+        CancellationToken ct
+    )
+    {
+        var clean = SanitizeFolder(relativePath);
+        if (string.IsNullOrWhiteSpace(clean))
+            return new(false, "Ruta no válida", null);
+
+        try
+        {
+            await EnsureStructureAsync(userId, new[] { clean }, ct);
+            _log.LogInformation("📂 Carpeta {Path} creada para usuario {UserId}", clean, userId);
+            return new(true, "Creada", new { path = clean });
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Error creando carpeta {Path} para {UserId}", clean, userId);
+            return new(false, "Error interno", null);
+        }
+    }
+
+    /* ====================================================== */
+    /*  MÉTODO 5 · DELETE FOLDER                              */
+    /* ====================================================== */
+    public async Task<(bool ok, string reason)> DeleteFolderAsync(
+        Guid userId,
+        string folder,
+        CancellationToken ct
+    )
+    {
+        folder = SanitizeFolder(folder);
+        if (string.IsNullOrWhiteSpace(folder))
+            return (false, "Nombre de carpeta no válido");
+
+        var space = await _db.SpacesClouds
+            .Include(s => s.FileResourcesCloud)
+            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+        if (space == null) return (false, "Espacio no encontrado");
+
+        var toDelete = space.FileResourcesCloud
+            .Where(f => f.RelativePath.StartsWith(folder + "/", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        _db.FileResourcesCloud.RemoveRange(toDelete);
+        space.UsedBytes = Math.Max(space.UsedBytes - toDelete.Sum(f => f.SizeBytes), 0);
+
+        var dirPath = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), folder);
+        if (Directory.Exists(dirPath)) Directory.Delete(dirPath, true);
+
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("🗑️  Carpeta {Folder} eliminada (usuario {Usr})", folder, userId);
+        return (true, null);
+    }
+
+    /* ====================================================== */
+    /*  MÉTODO 6 · ZIP FOLDER                                 */
+    /* ====================================================== */
+    public async Task<(bool ok, Stream content, string reason)> GetFolderZipAsync(
+        Guid userId,
+        string folder,
+        CancellationToken ct
+    )
+    {
+        folder = SanitizeFolder(folder);
+        if (string.IsNullOrWhiteSpace(folder))
+            return (false, null, "Nombre de carpeta no válido");
+
+        var space = await _db.SpacesClouds
+            .Include(s => s.FileResourcesCloud)
+            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+        if (space == null) return (false, null, "Espacio no encontrado");
+
+        var items = space.FileResourcesCloud
+            .Where(f => f.RelativePath.StartsWith(folder + "/", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (!items.Any()) return (false, null, "Carpeta vacía o inexistente");
+
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+        {
+            foreach (var meta in items)
+            {
+                var full = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), meta.RelativePath);
+                if (File.Exists(full))
+                    zip.CreateEntryFromFile(full, meta.RelativePath.Replace('\\', '/'), CompressionLevel.Fastest);
+            }
+        }
+        ms.Position = 0;
+        return (true, ms, null);
+    }
+
+    /* ====================================================== */
+    /*  MÉTODO 7 · FIND META                                  */
+    /* ====================================================== */
     public async Task<FileResourceCloud?> FindMetaAsyncUser(
         Guid userId,
         string relativePath,
         CancellationToken ct
     )
     {
-        var space = await _db
-            .SpacesClouds.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == userId, ct);
-        if (space is null)
-        {
-            _log.LogWarning("No se encontró el espacio para el cliente {UserId}", userId);
-            return null!;
-        }
-
-        return await _db
-            .FileResourcesCloud.AsNoTracking()
-            .Where(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath)
-            .FirstOrDefaultAsync(ct);
+        var space = await _db.SpacesClouds.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        if (space == null) return null;
+        return await _db.FileResourcesCloud
+            .AsNoTracking()
+            .FirstOrDefaultAsync(fr => fr.SpaceId == space.Id && fr.RelativePath == relativePath, ct);
     }
 
-    public async Task<byte[]> CreateFolderZipAsync(
-        Guid customerId,
-        string relativePath,
-        CancellationToken ct
-    )
+    /* ====================================================== */
+    /*  MÉTODO 8 · CreateFolderZipAsync (para link directo)    */
+    /* ====================================================== */
+    public async Task<byte[]> CreateFolderZipAsync(Guid userId, string folder, CancellationToken ct = default)
     {
-        var folderPath = Path.Combine(_rootPath, customerId.ToString("N"), relativePath)
-            .Replace("\\", "/");
+        var folderSanitized = SanitizeFolder(folder);
+        var physical = Path.Combine(FileStoragePathResolver.UserRoot(_rootPath, userId), folderSanitized);
 
-        if (!Directory.Exists(folderPath))
-            return null;
+        if (!Directory.Exists(physical)) return null!;
 
-        using var memoryStream = new MemoryStream();
-        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        await using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
         {
-            var files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
-
-            foreach (var file in files)
+            foreach (var file in Directory.GetFiles(physical, "*", SearchOption.AllDirectories))
             {
-                var relativeZipPath = Path.GetRelativePath(folderPath, file);
-                var entry = archive.CreateEntry(relativeZipPath, CompressionLevel.Fastest);
-                using var entryStream = entry.Open();
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(file, ct);
-                await entryStream.WriteAsync(fileBytes, ct);
+                var rel = Path.GetRelativePath(physical, file);
+                zip.CreateEntryFromFile(file, rel, CompressionLevel.Fastest);
             }
         }
-
-        return memoryStream.ToArray();
+        return ms.ToArray();
     }
+
+    /* ====================================================== */
+    /*  Helpers                                               */
+    /* ====================================================== */
+    private static string GetCategory(string ext, string mime)
+    {
+        ext = ext.ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => "images",
+            ".mp4" or ".mkv" or ".mov" or ".avi" => "videos",
+            ".pdf" or ".doc" or ".docx" or ".xls" or ".xlsx" or ".pptx" => "docs",
+            ".zip" or ".rar" or ".7z" or ".tar" => "archives",
+            _ when mime.StartsWith("image/") => "images",
+            _ when mime.StartsWith("video/") => "videos",
+            _ => "others"
+        };
+    }
+
+    private static string SanitizeFolder(string path) =>
+        Regex.Replace(path ?? "", @"[^A-Za-z0-9_\- /]", "")
+              .Replace('\\', '/')
+              .Replace("//", "/")
+              .Trim('/', ' ');
 }

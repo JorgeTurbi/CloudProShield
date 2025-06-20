@@ -1,69 +1,56 @@
+using System.Net;
+using System.Net.Mime;
 using System.Security.Claims;
 using CloudShield.Services.OperationStorage;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CloudProShield.Controllers
+namespace CloudProShield.Controllers;
+
+[ApiController]
+[Route("api/OperationControllerUser")]
+[Authorize]
+public sealed class OperationControllerUser : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class OperationControllerUser : ControllerBase
+    private readonly IStorageServiceUser _store;
+    public OperationControllerUser(IStorageServiceUser store) => _store = store;
+
+    /* ---------------------------------------------------------- */
+    /*  GET api/OperationControllerUser/{*relativePath}           */
+    /* ---------------------------------------------------------- */
+    [HttpGet("{*relativePath}")]
+    public async Task<IActionResult> Download(string relativePath, CancellationToken ct)
     {
+        // 1) ID del usuario desde el token
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return Unauthorized();
 
-        private readonly IStorageServiceUser _storage;
-        public OperationControllerUser(IStorageServiceUser storage)
-        {
-            _storage = storage;
-        }
+        // 2) Decodificar y normalizar
+        var decoded = WebUtility.UrlDecode(relativePath)        // “Documents/Doc … .docx”
+                       .Replace('\\', '/')
+                       .TrimStart('/');
 
-
-        [HttpGet("{*relativePath}")]
-        public async Task<IActionResult> Download(
-                                          string relativePath,
-                                          CancellationToken ct)
-        {
-
-            string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(Id, out Guid userId))
-            {
-                // El GUID es válido, puedes usar la variable 'guid' aquí
-            }
-            else
-            {
-                // El string no es un GUID válido
-                Console.WriteLine("El formato del GUID no es válido.");
-            }
-            var (ok, stream, contentType, reason) =
-                await _storage.GetFileAsync(userId, relativePath, ct);
-
-            if (!ok)
-                return NotFound(new { error = reason });
-
-            return File(stream!, contentType ?? "application/octet-stream");
-        }
-
-
-
-        [HttpGet("download-folder")]
-        public async Task<IActionResult> DownloadFolder([FromQuery] string relativePath, CancellationToken ct)
-        {
-            string? Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(Id, out Guid customerId))
-            {
-                // El GUID es válido, puedes usar la variable 'guid' aquí
-            }
-            else
-            {
-                // El string no es un GUID válido
-                Console.WriteLine("El formato del GUID no es válido.");
-            }
-
-            var zipBytes = await _storage.CreateFolderZipAsync(customerId, relativePath, ct);
-
-            if (zipBytes == null)
-                return NotFound("La carpeta no existe");
-
-            return File(zipBytes, "application/zip", $"{Path.GetFileName(relativePath)}.zip");
-        }
+        // 3) Buscar archivo
+        var (ok, stream, contentType, reason) = await _store.GetFileAsync(userId, decoded, ct);
+        return ok ? File(stream!, contentType ?? MediaTypeNames.Application.Octet)
+                   : NotFound(new { error = reason });
     }
 
+    /* ---------------------------------------------------------- */
+    /*  GET api/OperationControllerUser/download-folder           */
+    /*     ?folder=Documents/Factura                              */
+    /* ---------------------------------------------------------- */
+    [HttpGet("download-folder")]
+    public async Task<IActionResult> DownloadFolder([FromQuery] string folder, CancellationToken ct)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return Unauthorized();
+
+        var decoded = WebUtility.UrlDecode(folder).Trim('/');   // misma higiene
+
+        var bytes = await _store.CreateFolderZipAsync(userId, decoded, ct);
+        if (bytes == null) return NotFound("La carpeta no existe");
+
+        return File(bytes, "application/zip", $"{Path.GetFileName(decoded)}.zip");
+    }
 }
