@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CloudShield.DTOs.FileSystem;
 using CloudShield.Entities.Operations;
 using CloudShield.Services.FileSystemServices;
+using CloudShield.Services.OperationStorage;
 using Commons;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,13 +19,29 @@ public class FileSystemControllerUser : ControllerBase
 {
   private readonly IFileSystemReadServiceUser _fileSystemService;
   private readonly ILogger<FileSystemControllerUser> _logger;
+  private readonly IStorageServiceUser _storage;
 
   public FileSystemControllerUser(
       IFileSystemReadServiceUser fileSystemService,
-      ILogger<FileSystemControllerUser> logger)
+      ILogger<FileSystemControllerUser> logger,
+      IStorageServiceUser storage)
   {
     _fileSystemService = fileSystemService;
     _logger = logger;
+    _storage = storage;
+  }
+
+  // Crear carpeta
+  [HttpPost("folders")]
+  public async Task<IActionResult> CreateFolder([FromBody] NewFolderDTO request, CancellationToken ct = default)
+  {
+    if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+      return Unauthorized();
+
+    var result = await _storage.CreateFolderAsync(userId,
+        string.IsNullOrEmpty(request.ParentPath) ? request.Name : $"{request.ParentPath}/{request.Name}", ct);
+
+    return result.Success ? Ok(result) : BadRequest(result);
   }
 
   /// <summary>
@@ -102,6 +119,17 @@ public class FileSystemControllerUser : ControllerBase
     }
   }
 
+  // Eliminar carpeta
+  [HttpDelete("folders/{*folderPath}")]
+  public async Task<IActionResult> DeleteFolder(string folderPath, CancellationToken ct = default)
+  {
+    if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+      return Unauthorized();
+
+    var (ok, reason) = await _storage.DeleteFolderAsync(userId, folderPath, ct);
+    return ok ? NoContent() : BadRequest(reason);
+  }
+
   /// <summary>
   /// Obtiene el contenido de una carpeta específica (Firms o Documents)
   /// </summary>
@@ -109,14 +137,14 @@ public class FileSystemControllerUser : ControllerBase
   /// <param name="folderName">Nombre de la carpeta (Firms o Documents)</param>
   /// <param name="ct">Token de cancelación</param>
   /// <returns>Contenido de la carpeta especificada</returns>
-  [HttpGet("folders/{folderName}")]
+  [HttpGet("folders/{*folderPath}")]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status400BadRequest)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status404NotFound)]
   [ProducesResponseType(typeof(ApiResponse<FolderContentDTO>), StatusCodes.Status500InternalServerError)]
   public async Task<IActionResult> GetFolderContent(
 
-      string folderName,
+      string folderPath,
       CancellationToken ct = default)
   {
     try
@@ -131,7 +159,7 @@ public class FileSystemControllerUser : ControllerBase
         // El string no es un GUID válido
         Console.WriteLine("El formato del GUID no es válido.");
       }
-      if (string.IsNullOrWhiteSpace(folderName))
+      if (string.IsNullOrWhiteSpace(folderPath))
       {
         var badRequestResponse = new ApiResponse<FolderContentDTO>(
             false,
@@ -142,10 +170,10 @@ public class FileSystemControllerUser : ControllerBase
 
       _logger.LogInformation(
           "Solicitando contenido de carpeta {FolderName} para usuario {UserId}",
-          folderName,
+          folderPath,
           userId);
 
-      var result = await _fileSystemService.GetFolderContentAsync(userId, folderName, ct);
+      var result = await _fileSystemService.GetFolderContentAsync(userId, folderPath, ct);
 
       if (!result.Success)
       {
@@ -158,11 +186,11 @@ public class FileSystemControllerUser : ControllerBase
     {
       _logger.LogError(ex,
           "Error no controlado al obtener contenido de carpeta {FolderName} para usuario {userId}",
-          folderName);
+          folderPath, null);
       var errorResponse = new ApiResponse<FolderContentDTO>(
           false,
           "Error interno del servidor",
-          null);
+          null!);
       return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
     }
   }
@@ -212,7 +240,6 @@ public class FileSystemControllerUser : ControllerBase
     }
   }
 
-
   [HttpGet("storage")]
   [ProducesResponseType(typeof(ApiResponse<SpaceCloud>), StatusCodes.Status200OK)]
   [ProducesResponseType(typeof(ApiResponse<SpaceCloud>), StatusCodes.Status404NotFound)]
@@ -252,7 +279,6 @@ public class FileSystemControllerUser : ControllerBase
     }
   }
 
-
   /// <summary>
   /// Obtiene todos los archivos de un usuario independientemente de la carpeta
   /// </summary>
@@ -281,7 +307,6 @@ public class FileSystemControllerUser : ControllerBase
         Console.WriteLine("El formato del GUID no es válido.");
       }
 
-
       _logger.LogInformation("Solicitando carpetas  {UserId}", userId);
 
       var result = await _fileSystemService.GetFolderContentExploreAsync(userId, ct);
@@ -301,27 +326,5 @@ public class FileSystemControllerUser : ControllerBase
           "Error interno del servidor");
       return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
     }
-
-
-
-
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

@@ -5,6 +5,7 @@ using CloudShield.Entities.Operations;
 using CloudShield.Services.FileSystemServices;
 using Commons;
 using DataContext;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CloudShield.Services.FileSystemRead_Repository;
@@ -99,67 +100,50 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
   }
 
   public async Task<ApiResponse<FolderContentDTO>> GetFolderContentAsync(
-      Guid UserId,
-      string folderName,
-      CancellationToken ct = default)
+    Guid userId, string folderPath, CancellationToken ct = default)
   {
-    try
+    folderPath = folderPath.Trim('/');               // “Fotos/2025”
+    var year = DateTime.UtcNow.Year.ToString();
+    var basePath = Path.Combine(_rootPath, year, userId.ToString("N"), folderPath);
+
+    /* ---------- sub-carpetas físicas ---------- */
+    var subDirs = Directory.Exists(basePath)
+        ? Directory.GetDirectories(basePath)
+        : Array.Empty<string>();
+
+    /* ---------- archivos SÓLO de este nivel ---------- */
+    var space = await _context.SpacesClouds
+        .AsNoTracking()
+        .Include(s => s.FileResourcesCloud)
+        .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+    var levelDir = folderPath.Replace('\\', '/');
+    var filesHere = space?.FileResourcesCloud
+        .Where(f => Path.GetDirectoryName(f.RelativePath)!
+                    .Replace('\\', '/') == levelDir)
+        .ToList() ?? new();
+
+    var dto = new FolderContentDTO
     {
-      if (string.IsNullOrWhiteSpace(folderName))
+      FolderName = Path.GetFileName(folderPath),
+      FolderPath = $"{year}/{userId:N}/{folderPath}",
+      SubFolders = subDirs.Select(d => new FolderDTO
       {
-        return new ApiResponse<FolderContentDTO>(
-            false,
-            "El nombre de la carpeta es requerido",
-            null);
-      }
+        Name = Path.GetFileName(d),
+        FullPath = d,
+        CreatedAt = Directory.GetCreationTime(d),
+        FileCount = space.FileResourcesCloud.Count(fr =>
+             fr.RelativePath.StartsWith($"{folderPath.TrimEnd('/')}/{Path.GetFileName(d)}/")),
+        TotalSizeBytes = space.FileResourcesCloud
+               .Where(fr => fr.RelativePath.StartsWith($"{folderPath.TrimEnd('/')}/{Path.GetFileName(d)}/"))
+               .Sum(fr => fr.SizeBytes)
+      }).ToList(),
+      Files = _mapper.Map<List<FileItemDTO>>(filesHere),
+      TotalFiles = filesHere.Count,
+      TotalSizeBytes = filesHere.Sum(f => f.SizeBytes)
+    };
 
-      var space = await _context.SpacesClouds
-          .AsNoTracking()
-          .Include(s => s.FileResourcesCloud)
-          .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
-
-      if (space == null)
-      {
-        return new ApiResponse<FolderContentDTO>(
-            false,
-            "No se encontró espacio para el cliente",
-            null);
-      }
-
-      var filesInFolder = space.FileResourcesCloud
-          .Where(f => f.RelativePath.StartsWith(folderName + "/", StringComparison.OrdinalIgnoreCase))
-          .ToList();
-
-      var fileItemDTOs = _mapper.Map<List<FileItemDTO>>(filesInFolder);
-
-      var result = new FolderContentDTO
-      {
-        FolderName = folderName,
-        FolderPath = $"{DateTime.UtcNow.Year}/{UserId:N}/{folderName}",
-        Files = fileItemDTOs,
-        TotalFiles = fileItemDTOs.Count,
-        TotalSizeBytes = fileItemDTOs.Sum(f => f.SizeBytes)
-      };
-
-      _logger.LogInformation(
-          "Contenido de carpeta {FolderName} obtenido para cliente {UserId}: {FileCount} archivos",
-          folderName,
-          UserId,
-          result.TotalFiles);
-
-      return new ApiResponse<FolderContentDTO>(
-          true,
-          $"Contenido de {folderName} obtenido correctamente. {result.TotalFiles} archivos encontrados",
-          result);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error al obtener contenido de carpeta {FolderName} para cliente {UserId}", folderName, UserId);
-      return new ApiResponse<FolderContentDTO>(
-          false,
-          "Error interno al obtener contenido de carpeta",
-          null);
-    }
+    return new(true, "ok", dto);
   }
 
   public async Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
@@ -337,7 +321,9 @@ public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
       }).ToList();
 
       // Obtener archivos que están dentro de esa ruta base
-      var filesInFolder = space.FileResourcesCloud.ToList();
+      var filesInFolder = space.FileResourcesCloud
+       .Where(f => !f.RelativePath.Contains('/'))
+       .ToList();
 
       var fileItems = filesInFolder.Select(f => new FileItemDTO
       {

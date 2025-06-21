@@ -13,16 +13,16 @@ public interface IStorageServiceUser
         string? customFolder = null
     );
 
-    Task<(bool ok, Stream content, string contentType, string reason)> GetFileAsync(
-        Guid userId,
-        string relativePath,
-        CancellationToken ct
-    );
-
     Task<(bool ok, string reason)> DeleteFileAsync(
         Guid spaceId,
         string relativePath,
         long fileBytes,
+        CancellationToken ct
+    );
+
+    Task<(bool ok, Stream content, string contentType, string reason)> GetFileAsync(
+        Guid userId,
+        string relativePath,
         CancellationToken ct
     );
 

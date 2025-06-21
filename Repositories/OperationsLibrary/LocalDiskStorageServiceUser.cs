@@ -88,18 +88,18 @@ public class LocalDiskStorageServiceUser : IStorageServiceUser
             return (false, "Se supera la cuota asignada");
 
         // 3) Carpetas
-        var category = string.IsNullOrWhiteSpace(customFolder)
-            ? GetCategory(Path.GetExtension(file.FileName), file.ContentType ?? "")
-            : SanitizeFolder(customFolder);
-
+        var targetPath = SanitizeFolder(customFolder ?? string.Empty);         // puede ser "", "docs", "docs/2024"
         var userRoot = FileStoragePathResolver.UserRoot(_rootPath, userId);
-        var finalFolder = Path.Combine(userRoot, category);
+        var finalFolder = string.IsNullOrEmpty(targetPath)
+                         ? userRoot
+                         : Path.Combine(userRoot, targetPath);
         Directory.CreateDirectory(finalFolder);
 
         var safeName = Path.GetFileName(file.FileName);
         var fullPath = Path.Combine(finalFolder, safeName);
-        var relativePath = $"{category}/{safeName}";
-
+        var relativePath = string.IsNullOrEmpty(targetPath)
+                         ? safeName
+                         : $"{targetPath}/{safeName}";
         await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
             await file.CopyToAsync(fs, ct);
 
