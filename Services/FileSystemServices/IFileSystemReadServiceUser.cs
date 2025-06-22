@@ -14,7 +14,8 @@ public interface IFileSystemReadServiceUser
     /// <returns>Estructura de carpetas del cliente</returns>
     Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
         Guid UserId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Obtiene el contenido de una carpeta específica
@@ -26,16 +27,21 @@ public interface IFileSystemReadServiceUser
     Task<ApiResponse<FolderContentDTO>> GetFolderContentAsync(
         Guid UserId,
         string folderName,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
+
     /// <summary>
     /// Lista todas las carpetas disponibles para un cliente
     /// </summary>
     /// <param name="UserId">ID del cliente</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Lista de carpetas</returns>
-    /// 
+    ///
+    Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(
+        Guid UserId,
+        CancellationToken ct = default
+    );
 
-    Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(Guid UserId, CancellationToken ct = default);
     /// <summary>
     /// Lista todas las carpetas disponibles para un cliente
     /// </summary>
@@ -44,7 +50,8 @@ public interface IFileSystemReadServiceUser
     /// <returns>Lista de carpetas</returns>
     Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
         Guid UserId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Obtiene todos los archivos de un cliente independientemente de la carpeta
@@ -52,6 +59,12 @@ public interface IFileSystemReadServiceUser
     /// <param name="UserId">ID del cliente</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Lista de todos los archivos del cliente</returns>
-    Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(Guid UserId, CancellationToken ct = default);
-    Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(string UserId, CancellationToken ct = default);
+    Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(
+        Guid UserId,
+        CancellationToken ct = default
+    );
+    Task<ApiResponse<SpaceCloudDTO>> GetAllSpaceAsync(
+        string UserId,
+        CancellationToken ct = default
+    );
 }

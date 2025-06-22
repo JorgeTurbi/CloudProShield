@@ -5,362 +5,513 @@ using CloudShield.Entities.Operations;
 using CloudShield.Services.FileSystemServices;
 using Commons;
 using DataContext;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CloudShield.Services.FileSystemRead_Repository;
 
 public class FileSystemRead_RepositoryUser : IFileSystemReadServiceUser
 {
-  private readonly ApplicationDbContext _context;
-  private readonly ILogger<FileSystemRead_RepositoryUser> _logger;
-  private readonly IMapper _mapper;
-  private readonly IConfiguration _configuration;
-  private readonly string _rootPath;
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<FileSystemRead_RepositoryUser> _logger;
+    private readonly IMapper _mapper;
+    private readonly IConfiguration _configuration;
+    private readonly string _rootPath;
 
-  public FileSystemRead_RepositoryUser(
-      ApplicationDbContext context,
-      ILogger<FileSystemRead_RepositoryUser> logger,
-      IMapper mapper,
-      IConfiguration configuration)
-  {
-    _context = context;
-    _logger = logger;
-    _mapper = mapper;
-    _configuration = configuration;
-    _rootPath = _configuration["Storage:RootPath"] ?? "StorageCloud";
-  }
-
-  public async Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
-      Guid UserId,
-      CancellationToken ct = default)
-  {
-    try
+    public FileSystemRead_RepositoryUser(
+        ApplicationDbContext context,
+        ILogger<FileSystemRead_RepositoryUser> logger,
+        IMapper mapper,
+        IConfiguration configuration
+    )
     {
-      var space = await _context.SpacesClouds
-          .AsNoTracking()
-          .Include(s => s.FileResourcesCloud)
-          .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
+        _context = context;
+        _logger = logger;
+        _mapper = mapper;
+        _configuration = configuration;
+        _rootPath = _configuration["Storage:RootPath"] ?? "StorageCloud";
+    }
 
-      if (space == null)
-      {
-        return new ApiResponse<UserFolderStructureDTO>(
-            false,
-            "No se encontró espacio para el cliente",
-            null);
-      }
+    #region Folder Structure Operations
 
-      var userRoot = FileStoragePathResolver.UserRoot(_rootPath, UserId);
-      var dto = new UserFolderStructureDTO
-      {
-        UserId = UserId,
-        Year = DateTime.UtcNow.Year.ToString(),
-        UsedBytes = space.UsedBytes,
-        MaxBytes = space.MaxBytes,
-        TotalFiles = space.FileResourcesCloud.Count,
-        TotalSizeBytes = space.FileResourcesCloud.Sum(f => f.SizeBytes),
-        Folders = Directory.Exists(userRoot)
-              ? Directory.GetDirectories(userRoot)
-                  .Select(dir =>
-                  {
-                    var name = Path.GetFileName(dir);
-                    var fIn = space.FileResourcesCloud
-                          .Where(f => f.RelativePath.StartsWith(name + "/")).ToList();
+    /// <summary>
+    /// Gets complete folder structure for a user
+    /// </summary>
+    public async Task<ApiResponse<UserFolderStructureDTO>> GetUserFolderStructureAsync(
+        Guid userId,
+        CancellationToken ct = default
+    )
+    {
+        try
+        {
+            var space = await _context
+                .SpacesClouds.AsNoTracking()
+                .Include(s => s.FileResourcesCloud)
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+            if (space == null)
+            {
+                return new ApiResponse<UserFolderStructureDTO>(false, "User space not found", null);
+            }
+
+            var userRoot = FileStoragePathResolver.UserRoot(_rootPath, userId);
+            var folders = await GetFolderStructureRecursive(
+                userRoot,
+                space.FileResourcesCloud.ToList(),
+                string.Empty
+            );
+
+            var dto = new UserFolderStructureDTO
+            {
+                UserId = userId,
+                Year = "N/A", // No longer using year-based structure
+                UsedBytes = space.UsedBytes,
+                MaxBytes = space.MaxBytes,
+                TotalFiles = space.FileResourcesCloud.Count,
+                TotalSizeBytes = space.FileResourcesCloud.Sum(f => f.SizeBytes),
+                Folders = folders,
+            };
+
+            _logger.LogInformation(
+                "Folder structure retrieved for user {UserId}: {FolderCount} folders",
+                userId,
+                dto.Folders.Count
+            );
+
+            return new ApiResponse<UserFolderStructureDTO>(
+                true,
+                $"Structure retrieved successfully. {dto.Folders.Count} folders found",
+                dto
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving folder structure for user {UserId}", userId);
+            return new ApiResponse<UserFolderStructureDTO>(
+                false,
+                "Internal error while retrieving folder structure",
+                null
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets content of a specific folder with proper nested navigation
+    /// </summary>
+    public async Task<ApiResponse<FolderContentDTO>> GetFolderContentAsync(
+        Guid userId,
+        string folderPath,
+        CancellationToken ct = default
+    )
+    {
+        try
+        {
+            var normalizedPath = FileStoragePathResolver.NormalizePath(folderPath);
+
+            var space = await _context
+                .SpacesClouds.AsNoTracking()
+                .Include(s => s.FileResourcesCloud)
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+            if (space == null)
+            {
+                return new ApiResponse<FolderContentDTO>(false, "User space not found", null);
+            }
+
+            var userRoot = FileStoragePathResolver.UserRoot(_rootPath, userId);
+            var fullFolderPath = string.IsNullOrEmpty(normalizedPath)
+                ? userRoot
+                : FileStoragePathResolver.GetFullPath(_rootPath, userId, normalizedPath);
+
+            // Get direct subfolders only
+            var subDirectories = Directory.Exists(fullFolderPath)
+                ? Directory.GetDirectories(fullFolderPath)
+                : Array.Empty<string>();
+
+            var subFolders = subDirectories
+                .Select(dir =>
+                {
+                    var dirName = Path.GetFileName(dir);
+                    var relativeDirPath = string.IsNullOrEmpty(normalizedPath)
+                        ? dirName
+                        : FileStoragePathResolver.BuildRelativePath(normalizedPath, dirName);
+
+                    var filesInDir = space
+                        .FileResourcesCloud.Where(f =>
+                            FileStoragePathResolver.IsFileInFolder(f.RelativePath, relativeDirPath)
+                        )
+                        .ToList();
 
                     return new FolderDTO
                     {
-                      Name = name,
-                      FullPath = dir,
-                      CreatedAt = Directory.GetCreationTime(dir),
-                      FileCount = fIn.Count,
-                      TotalSizeBytes = fIn.Sum(f => f.SizeBytes)
+                        Name = dirName,
+                        FullPath = relativeDirPath,
+                        CreatedAt = Directory.GetCreationTime(dir),
+                        FileCount = filesInDir.Count,
+                        TotalSizeBytes = filesInDir.Sum(f => f.SizeBytes),
                     };
-                  }).ToList()
-              : new()
-      };
+                })
+                .OrderBy(f => f.Name)
+                .ToList();
 
-      _logger.LogInformation(
-          "Estructura de carpetas obtenida para cliente {UserId}: {FolderCount} carpetas",
-          UserId,
-          dto.Folders.Count);
+            // Get files directly in this folder (not in subfolders)
+            var filesInCurrentFolder = space
+                .FileResourcesCloud.Where(f =>
+                    FileStoragePathResolver.IsFileDirectlyInFolder(
+                        f.RelativePath, // p.ej.  "Pruebass/balance-sheet.xlsx"
+                        normalizedPath
+                    )
+                ) // p.ej.  "Pruebass"  (o "" para root)
+                .OrderBy(f => f.FileName)
+                .ToList();
 
-      return new ApiResponse<UserFolderStructureDTO>(
-          true,
-          $"Estructura obtenida correctamente. {dto.Folders.Count} carpetas encontradas",
-          dto);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error al obtener estructura de carpetas para cliente {UserId}", UserId);
-      return new ApiResponse<UserFolderStructureDTO>(
-          false,
-          "Error interno al obtener estructura de carpetas",
-          null);
-    }
-  }
+            var dto = new FolderContentDTO
+            {
+                FolderName = string.IsNullOrEmpty(normalizedPath)
+                    ? "Root"
+                    : Path.GetFileName(normalizedPath),
+                FolderPath = normalizedPath,
+                SubFolders = subFolders,
+                Files = _mapper.Map<List<FileItemDTO>>(filesInCurrentFolder),
+                TotalFiles = filesInCurrentFolder.Count,
+                TotalSizeBytes = filesInCurrentFolder.Sum(f => f.SizeBytes),
+            };
 
-  public async Task<ApiResponse<FolderContentDTO>> GetFolderContentAsync(
-    Guid userId, string folderPath, CancellationToken ct = default)
-  {
-    folderPath = folderPath.Trim('/');               // “Fotos/2025”
-    var year = DateTime.UtcNow.Year.ToString();
-    var basePath = Path.Combine(_rootPath, year, userId.ToString("N"), folderPath);
+            _logger.LogInformation(
+                "Folder content retrieved for user {UserId}, path '{FolderPath}': {FileCount} files, {FolderCount} subfolders",
+                userId,
+                normalizedPath,
+                dto.Files.Count,
+                dto.SubFolders.Count
+            );
 
-    /* ---------- sub-carpetas físicas ---------- */
-    var subDirs = Directory.Exists(basePath)
-        ? Directory.GetDirectories(basePath)
-        : Array.Empty<string>();
-
-    /* ---------- archivos SÓLO de este nivel ---------- */
-    var space = await _context.SpacesClouds
-        .AsNoTracking()
-        .Include(s => s.FileResourcesCloud)
-        .FirstOrDefaultAsync(s => s.UserId == userId, ct);
-
-    var levelDir = folderPath.Replace('\\', '/');
-    var filesHere = space?.FileResourcesCloud
-        .Where(f => Path.GetDirectoryName(f.RelativePath)!
-                    .Replace('\\', '/') == levelDir)
-        .ToList() ?? new();
-
-    var dto = new FolderContentDTO
-    {
-      FolderName = Path.GetFileName(folderPath),
-      FolderPath = $"{year}/{userId:N}/{folderPath}",
-      SubFolders = subDirs.Select(d => new FolderDTO
-      {
-        Name = Path.GetFileName(d),
-        FullPath = d,
-        CreatedAt = Directory.GetCreationTime(d),
-        FileCount = space.FileResourcesCloud.Count(fr =>
-             fr.RelativePath.StartsWith($"{folderPath.TrimEnd('/')}/{Path.GetFileName(d)}/")),
-        TotalSizeBytes = space.FileResourcesCloud
-               .Where(fr => fr.RelativePath.StartsWith($"{folderPath.TrimEnd('/')}/{Path.GetFileName(d)}/"))
-               .Sum(fr => fr.SizeBytes)
-      }).ToList(),
-      Files = _mapper.Map<List<FileItemDTO>>(filesHere),
-      TotalFiles = filesHere.Count,
-      TotalSizeBytes = filesHere.Sum(f => f.SizeBytes)
-    };
-
-    return new(true, "ok", dto);
-  }
-
-  public async Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
-      Guid UserId,
-      CancellationToken ct = default)
-  {
-    try
-    {
-      var space = await _context.SpacesClouds
-          .AsNoTracking()
-          .Include(s => s.FileResourcesCloud)
-          .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
-
-      if (space == null)
-      {
-        return new ApiResponse<List<FolderDTO>>(
-            false,
-            "No se encontró espacio para el cliente",
-            new List<FolderDTO>());
-      }
-
-      var currentYear = DateTime.UtcNow.Year.ToString();
-      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
-
-      var folders = new List<FolderDTO>();
-
-      if (Directory.Exists(userPath))
-      {
-        var subDirectories = Directory.GetDirectories(userPath);
-
-        foreach (var dirPath in subDirectories)
-        {
-          var dirName = Path.GetFileName(dirPath);
-          var filesInFolder = space.FileResourcesCloud
-              .Where(f => f.RelativePath.StartsWith(dirName + "/"))
-              .ToList();
-
-          folders.Add(new FolderDTO
-          {
-            Name = dirName,
-            FullPath = dirPath,
-            CreatedAt = Directory.GetCreationTime(dirPath),
-            FileCount = filesInFolder.Count,
-            TotalSizeBytes = filesInFolder.Sum(f => f.SizeBytes)
-          });
+            return new ApiResponse<FolderContentDTO>(
+                true,
+                "Folder content retrieved successfully",
+                dto
+            );
         }
-      }
-
-      _logger.LogInformation(
-          "Carpetas obtenidas para cliente {UserId}: {FolderCount} carpetas",
-          UserId,
-          folders.Count);
-
-      return new ApiResponse<List<FolderDTO>>(
-          true,
-          $"{folders.Count} carpetas encontradas",
-          folders);
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error retrieving folder content for user {UserId}, path '{FolderPath}'",
+                userId,
+                folderPath
+            );
+            return new ApiResponse<FolderContentDTO>(
+                false,
+                "Internal error while retrieving folder content",
+                null
+            );
+        }
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// Gets all user folders (flat list)
+    /// </summary>
+    public async Task<ApiResponse<List<FolderDTO>>> GetUserFoldersAsync(
+        Guid userId,
+        CancellationToken ct = default
+    )
     {
-      _logger.LogError(ex, "Error al obtener carpetas para cliente {UserId}", UserId);
-      return new ApiResponse<List<FolderDTO>>(
-          false,
-          "Error interno al obtener carpetas",
-          new List<FolderDTO>());
-    }
-  }
+        try
+        {
+            var space = await _context
+                .SpacesClouds.AsNoTracking()
+                .Include(s => s.FileResourcesCloud)
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
-  public async Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(
-      Guid UserId,
-      CancellationToken ct = default)
-  {
-    try
+            if (space == null)
+            {
+                return new ApiResponse<List<FolderDTO>>(
+                    false,
+                    "User space not found",
+                    new List<FolderDTO>()
+                );
+            }
+
+            var userPath = FileStoragePathResolver.UserRoot(_rootPath, userId);
+            var folders = new List<FolderDTO>();
+
+            if (Directory.Exists(userPath))
+            {
+                // Get all directories recursively
+                var allDirectories = Directory.GetDirectories(
+                    userPath,
+                    "*",
+                    SearchOption.AllDirectories
+                );
+
+                foreach (var dirPath in allDirectories)
+                {
+                    var relativePath = Path.GetRelativePath(userPath, dirPath).Replace('\\', '/');
+                    var dirName = Path.GetFileName(dirPath);
+
+                    var filesInFolder = space
+                        .FileResourcesCloud.Where(f =>
+                            FileStoragePathResolver.IsFileInFolder(f.RelativePath, relativePath)
+                        )
+                        .ToList();
+
+                    folders.Add(
+                        new FolderDTO
+                        {
+                            Name = dirName,
+                            FullPath = relativePath,
+                            CreatedAt = Directory.GetCreationTime(dirPath),
+                            FileCount = filesInFolder.Count,
+                            TotalSizeBytes = filesInFolder.Sum(f => f.SizeBytes),
+                        }
+                    );
+                }
+            }
+
+            folders = folders.OrderBy(f => f.FullPath).ToList();
+
+            _logger.LogInformation(
+                "Folders retrieved for user {UserId}: {FolderCount} folders",
+                userId,
+                folders.Count
+            );
+
+            return new ApiResponse<List<FolderDTO>>(
+                true,
+                $"{folders.Count} folders found",
+                folders
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving folders for user {UserId}", userId);
+            return new ApiResponse<List<FolderDTO>>(
+                false,
+                "Internal error while retrieving folders",
+                new List<FolderDTO>()
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets folder content for exploration (root level navigation)
+    /// </summary>
+    public async Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(
+        Guid userId,
+        CancellationToken ct = default
+    )
     {
-      var space = await _context.SpacesClouds
-          .AsNoTracking()
-          .Include(s => s.FileResourcesCloud)
-          .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
-
-      _logger.LogInformation(
-       "Archivos Con Informacion de usuario {UserId} solicitados",
-      space.ToString());
-
-      if (space == null)
-      {
-        return new ApiResponse<List<FileItemDTO>>(
-            false,
-            "No se encontró espacio para el cliente",
-            new List<FileItemDTO>());
-      }
-
-
-      var fileItemDTOs = _mapper.Map<List<FileItemDTO>>(space.FileResourcesCloud.ToList());
-      if (fileItemDTOs == null || fileItemDTOs.Count == 0)
-      {
-        return new ApiResponse<List<FileItemDTO>>(
-            true,
-            "No se encontraron archivos para el cliente",
-            new List<FileItemDTO>());
-      }
-      _logger.LogInformation(
-          "Archivos obtenidos para cliente {UserId}: {FileCount} archivos",
-          UserId,
-          fileItemDTOs.Count);
-
-      return new ApiResponse<List<FileItemDTO>>(
-          true,
-          $"{fileItemDTOs.Count} archivos encontrados",
-          fileItemDTOs);
+        try
+        {
+            // This method returns root level content for exploration
+            return await GetFolderContentAsync(userId, string.Empty, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving explore content for user {UserId}", userId);
+            return new ApiResponse<FolderContentDTO>(
+                false,
+                "Internal error while retrieving explore content",
+                null
+            );
+        }
     }
-    catch (Exception ex)
+
+    #endregion
+
+    #region File Operations
+
+    /// <summary>
+    /// Gets all files for a user
+    /// </summary>
+    public async Task<ApiResponse<List<FileItemDTO>>> GetAllUserFilesAsync(
+        Guid userId,
+        CancellationToken ct = default
+    )
     {
-      _logger.LogError(ex, "Error al obtener archivos para cliente {UserId}", UserId);
-      return new ApiResponse<List<FileItemDTO>>(
-          false,
-          "Error interno al obtener archivos",
-          new List<FileItemDTO>());
-    }
-  }
+        try
+        {
+            var space = await _context
+                .SpacesClouds.AsNoTracking()
+                .Include(s => s.FileResourcesCloud)
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
-  public async Task<ApiResponse<SpaceCloud>> GetAllSpaceAsync(string guid, CancellationToken ct = default)
-  {
-    if (Guid.TryParse(guid, out Guid UserId))
+            if (space == null)
+            {
+                return new ApiResponse<List<FileItemDTO>>(
+                    false,
+                    "User space not found",
+                    new List<FileItemDTO>()
+                );
+            }
+
+            var files = space
+                .FileResourcesCloud.OrderBy(f => f.RelativePath)
+                .ThenBy(f => f.FileName)
+                .ToList();
+
+            var fileItems = _mapper.Map<List<FileItemDTO>>(files);
+
+            _logger.LogInformation(
+                "All files retrieved for user {UserId}: {FileCount} files",
+                userId,
+                fileItems.Count
+            );
+
+            return new ApiResponse<List<FileItemDTO>>(
+                true,
+                $"{fileItems.Count} files found",
+                fileItems
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all files for user {UserId}", userId);
+            return new ApiResponse<List<FileItemDTO>>(
+                false,
+                "Internal error while retrieving files",
+                new List<FileItemDTO>()
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets space information for a user
+    /// </summary>
+    public async Task<ApiResponse<SpaceCloudDTO>> GetAllSpaceAsync(
+        string userIdString,
+        CancellationToken ct = default
+    )
     {
-      // El GUID es válido, puedes usar la variable 'guid' aquí
+        try
+        {
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return new ApiResponse<SpaceCloudDTO>(false, "Invalid user ID format", null);
+            }
+
+            var spaceDto = await _context
+                .SpacesClouds.AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .Select(s => new SpaceCloudDTO
+                {
+                    Id = s.Id,
+                    UserId = s.UserId,
+                    MaxBytes = s.MaxBytes,
+                    UsedBytes = s.UsedBytes,
+                    RowVersion = s.RowVersion,
+                    CreatedAt = s.CreateAt,
+                    UpdatedAt = s.UpdateAt,
+                    Files = s
+                        .FileResourcesCloud.Select(f => new FileResourceCloudDTO
+                        {
+                            Id = f.Id,
+                            FileName = f.FileName,
+                            FileSize = f.SizeBytes,
+                            ContentType = f.ContentType,
+                            CreatedAt = f.CreateAt,
+                        })
+                        .ToList(),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (spaceDto == null)
+            {
+                return new ApiResponse<SpaceCloudDTO>(false, "User space not found", null);
+            }
+
+            _logger.LogInformation(
+                "Space information retrieved for user {UserId}: {UsedBytes}/{MaxBytes} bytes",
+                userId,
+                spaceDto.UsedBytes,
+                spaceDto.MaxBytes
+            );
+
+            return new ApiResponse<SpaceCloudDTO>(
+                true,
+                "Space information retrieved successfully",
+                spaceDto
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving space for user {UserId}", userIdString);
+            return new ApiResponse<SpaceCloudDTO>(
+                false,
+                "Internal error while retrieving space information",
+                null
+            );
+        }
     }
-    else
+
+    #endregion
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Recursively builds folder structure
+    /// </summary>
+    private async Task<List<FolderDTO>> GetFolderStructureRecursive(
+        string basePath,
+        List<FileResourceCloud> allFiles,
+        string currentRelativePath
+    )
     {
-      // El string no es un GUID válido
-      Console.WriteLine("El formato del GUID no es válido.");
+        var folders = new List<FolderDTO>();
+        var currentFullPath = string.IsNullOrEmpty(currentRelativePath)
+            ? basePath
+            : Path.Combine(basePath, currentRelativePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!Directory.Exists(currentFullPath))
+            return folders;
+
+        try
+        {
+            var subDirectories = Directory.GetDirectories(currentFullPath);
+
+            foreach (var subDir in subDirectories)
+            {
+                var dirName = Path.GetFileName(subDir);
+                var relativeDirPath = string.IsNullOrEmpty(currentRelativePath)
+                    ? dirName
+                    : FileStoragePathResolver.BuildRelativePath(currentRelativePath, dirName);
+
+                // Get files in this specific directory and all subdirectories
+                var filesInDir = allFiles
+                    .Where(f =>
+                        FileStoragePathResolver.IsFileInFolder(f.RelativePath, relativeDirPath)
+                    )
+                    .ToList();
+
+                var folder = new FolderDTO
+                {
+                    Name = dirName,
+                    FullPath = relativeDirPath,
+                    CreatedAt = Directory.GetCreationTime(subDir),
+                    FileCount = filesInDir.Count,
+                    TotalSizeBytes = filesInDir.Sum(f => f.SizeBytes),
+                };
+
+                folders.Add(folder);
+
+                // Recursively get subfolders
+                var subFolders = await GetFolderStructureRecursive(
+                    basePath,
+                    allFiles,
+                    relativeDirPath
+                );
+                folders.AddRange(subFolders);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Error reading directory structure at path: {Path}",
+                currentFullPath
+            );
+        }
+
+        return folders.OrderBy(f => f.FullPath).ToList();
     }
-    var space = await _context.SpacesClouds
-      .AsNoTracking()
-      .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
 
-    return space == null
-      ? await Task.FromResult(new ApiResponse<SpaceCloud>(false, "No se encontró espacio para el cliente", null))
-      : await Task.FromResult(new ApiResponse<SpaceCloud>(true, "Espacio encontrado", space));
-
-    throw new NotImplementedException();
-  }
-
-  public async Task<ApiResponse<FolderContentDTO>> GetFolderContentExploreAsync(Guid UserId, CancellationToken ct = default)
-  {
-    try
-    {
-      var space = await _context.SpacesClouds
-          .AsNoTracking()
-          .Include(s => s.FileResourcesCloud)
-          .FirstOrDefaultAsync(s => s.UserId == UserId, ct);
-
-      _logger.LogInformation(
-          "Explorando contenido de carpeta para usuario {UserId}",
-          UserId);
-
-      if (space == null)
-      {
-        return new ApiResponse<FolderContentDTO>(
-            false,
-            "No se encontró espacio para el usuario",
-            null);
-      }
-
-      // Construir la ruta base de almacenamiento
-      var userPath = FileStoragePathResolver.UserRoot(_rootPath, UserId);
-
-      // Obtener carpetas (subcarpetas) directamente dentro de la ruta base
-      var folderPaths = Directory.GetDirectories(userPath);
-      var folderItems = folderPaths.Select(folderPath => new FolderItemDTO
-      {
-        Name = Path.GetFileName(folderPath),
-        RelativePath = folderPath.Replace(_rootPath, "").TrimStart('/'),
-        CreatedAt = Directory.GetCreationTime(folderPath),
-        UpdatedAt = Directory.GetLastWriteTime(folderPath)
-      }).ToList();
-
-      // Obtener archivos que están dentro de esa ruta base
-      var filesInFolder = space.FileResourcesCloud
-       .Where(f => !f.RelativePath.Contains('/'))
-       .ToList();
-
-      var fileItems = filesInFolder.Select(f => new FileItemDTO
-      {
-        Id = f.Id,
-        FileName = f.FileName,
-        ContentType = f.ContentType,
-        RelativePath = f.RelativePath,
-        SizeBytes = f.SizeBytes,
-        CreatedAt = f.CreateAt,
-        UpdatedAt = f.UpdateAt,
-        Category = "" // o asigna si tienes esta propiedad en la BD
-      }).ToList();
-
-      // Construir respuesta final
-      var folderContent = new FolderContentDTO
-      {
-        FolderName = "root",
-        FolderPath = userPath,
-        Folders = folderItems,
-        Files = fileItems,
-        TotalFiles = fileItems.Count,
-        TotalSizeBytes = fileItems.Sum(f => f.SizeBytes)
-      };
-
-      return new ApiResponse<FolderContentDTO>(
-          true,
-          "Contenido de carpeta explorado correctamente",
-          folderContent);
-    }
-    catch (Exception ex)
-    {
-      _logger.LogError(ex, "Error al obtener contenido de carpeta para usuario {UserId}", UserId);
-      return new ApiResponse<FolderContentDTO>(
-          false,
-          "Error interno al obtener contenido de carpeta",
-          null);
-    }
-  }
-
+    #endregion
 }
