@@ -5,6 +5,7 @@ using CloudShield.Services.OperationStorage;
 using Commons.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Integration.Handlers;
+using Reponsitories.OperationsLibrary;
 using Reponsitories.PermissionsValidate_Repository;
 using Reponsitories.Roles_Repository;
 using Repositories.Address_Repository;
@@ -71,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISessionValidationService, SessionValidation_Repository>();
         services.AddScoped<IStorageService, LocalDiskStorageService>();
         services.AddScoped<IStorageServiceUser, LocalDiskStorageServiceUser>();
+        services.AddScoped<IDocumentAccessService, DocumentAccessService>();
         services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
         services.AddScoped<IFileSystemReadServiceUser, FileSystemRead_RepositoryUser>();
         services.AddScoped<IFolderProvisioner>(sp =>
@@ -80,6 +82,7 @@ public static class ServiceCollectionExtensions
         // Handlers for RabbitMQ events
         services.AddScoped<CustomerCreatedEventHandler>();
         services.AddScoped<AccountRegisteredEventHandler>();
+        services.AddScoped<DocumentAccessRequestedEventHandler>();
 
         return services;
     }

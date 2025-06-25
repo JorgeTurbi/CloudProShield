@@ -20,7 +20,13 @@ namespace CloudShield.Controllers
         private readonly IAddress _address;
         private readonly IUserCommandDelete _deleteUser;
 
-        public AccountController(IUserCommandCreate user, IUserCommandRead userRead, IAddress address, IUserCommandsUpdate userUpdate, IUserCommandDelete deleteUser)
+        public AccountController(
+            IUserCommandCreate user,
+            IUserCommandRead userRead,
+            IAddress address,
+            IUserCommandsUpdate userUpdate,
+            IUserCommandDelete deleteUser
+        )
         {
             _user = user;
             _userRead = userRead;
@@ -39,7 +45,8 @@ namespace CloudShield.Controllers
             string originUrl = Request.Headers["Origin"].ToString();
             ApiResponse<bool> result = await _user.AddNew(user, originUrl);
 
-            if (result.Success == false) return BadRequest(new { result });
+            if (result.Success == false)
+                return BadRequest(new { result });
 
             return Created($"api/users/{user.Id}", result);
         }
@@ -48,7 +55,8 @@ namespace CloudShield.Controllers
         public async Task<IActionResult> GetAll()
         {
             ApiResponse<List<UserDTO_Only>> result = await _userRead.GetAllUsers();
-            if (result.Success == false) return BadRequest(new { result });
+            if (result.Success == false)
+                return BadRequest(new { result });
 
             return Ok(result);
         }
@@ -57,7 +65,8 @@ namespace CloudShield.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             ApiResponse<AddressDTObyUser> result = await _address.GetAddressbyUserId(id);
-            if (result.Success == false) return BadRequest(new { result });
+            if (result.Success == false)
+                return BadRequest(new { result });
 
             return Ok(result);
         }
@@ -77,7 +86,9 @@ namespace CloudShield.Controllers
 
         [HttpPost("Login")]
         [AllowAnonymous]
-        public async Task<ActionResult<ApiResponse<string>>> Login([FromBody] UserLoginDTO userLoginDTO)
+        public async Task<ActionResult<ApiResponse<string>>> Login(
+            [FromBody] UserLoginDTO userLoginDTO
+        )
         {
             if (userLoginDTO == null)
                 return BadRequest(new ApiResponse<string>(false, "Invalid login request"));
@@ -114,6 +125,7 @@ namespace CloudShield.Controllers
 
             return Ok(result);
         }
+
         [HttpPut("DisabledUser")]
         public async Task<IActionResult> DisabledUser([FromBody] int user)
         {
