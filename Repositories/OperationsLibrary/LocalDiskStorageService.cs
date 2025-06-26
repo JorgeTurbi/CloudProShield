@@ -40,7 +40,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
 
         var segments = cleaned.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var first = segments[0];
-        var protectedNames = new[] { "Documents", "Firms", customerId.ToString("N") };
+        var protectedNames = new[] { "Documents", "Firms", "Requests", customerId.ToString("N") };
 
         // ⬇️  sólo prohibimos si se intenta crear/modificar el root
         if (
@@ -77,7 +77,7 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
 
         var segments = folder.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var firstSeg = segments.FirstOrDefault();
-        var protectedNames = new[] { "Documents", "Firms", customerId.ToString("N") };
+        var protectedNames = new[] { "Documents", "Firms", "Requests", customerId.ToString("N") };
 
         // ⛔ NO se puede borrar la carpeta raíz protegida
         if (
