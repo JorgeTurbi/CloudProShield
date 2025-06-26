@@ -310,18 +310,18 @@ public class FileSystemRead_Repository : IFileSystemReadService
         }
     }
 
-    public async Task<ApiResponse<FileItemDTO>> GetFileByIdAsync(Guid documentId, CancellationToken ct = default)
+    public async Task<ApiResponse<FileItemDTO>> GetFileByIdAsync(
+        Guid documentId,
+        CancellationToken ct = default
+    )
     {
-        var response = await _context.FileResources
-                .AsNoTracking()
-                .FirstOrDefaultAsync(f => f.Id == documentId, ct);
+        var response = await _context
+            .FileResources.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == documentId, ct);
         if (response is null)
             return new ApiResponse<FileItemDTO>(false, "No se encontró el archivo", null);
 
         var fileItemDTO = _mapper.Map<FileItemDTO>(response);
         return new ApiResponse<FileItemDTO>(true, "Archivo encontrado", fileItemDTO);
-
     }
-
-    
 }

@@ -51,19 +51,17 @@ public interface IFileSystemReadService
         CancellationToken ct = default
     );
 
-
- /// <summary>
+    /// <summary>
     /// Obtiene todos los archivos de un cliente independientemente de la carpeta
     /// </summary>
     /// <param name="documentId">ID del documento</param>
     /// <param name="ct">Token de cancelación</param>
     /// <returns>Listar el documento con ese Id</returns>
-    /// 
-    /// 
-    /// 
+    ///
+    ///
+    ///
     Task<ApiResponse<FileItemDTO>> GetFileByIdAsync(
         Guid documentId,
         CancellationToken ct = default
     );
-
 }

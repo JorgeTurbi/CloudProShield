@@ -245,6 +245,33 @@ public class FileSystemController : ControllerBase
         }
     }
 
+    [HttpGet("files/{documentId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<FileItemDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<FileItemDTO>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ApiResponse<FileItemDTO>),
+        StatusCodes.Status500InternalServerError
+    )]
+    public async Task<IActionResult> GetFileById(Guid documentId, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("Solicitando archivo con ID {DocumentId}", documentId);
+            var result = await _fileSystemService.GetFileByIdAsync(documentId, ct);
 
-  
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener archivo con ID {DocumentId}", documentId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new ApiResponse<FileItemDTO>(false, "Error interno del servidor", null)
+            );
+        }
+    }
 }

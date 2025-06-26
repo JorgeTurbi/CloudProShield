@@ -16,6 +16,7 @@ using Repositories.PermissionsUpdate_Repository;
 using Repositories.RolePermissions_Repository;
 using Repositories.Roles_Repository;
 using Repositories.RoleUpdate_Repository;
+using Repositories.Security_Repository;
 using Repositories.Session_Repository;
 using Repositories.States_Repository;
 using Repositories.Users;
@@ -25,6 +26,7 @@ using Services.EmailServices;
 using Services.Permissions;
 using Services.RolePermissions;
 using Services.Roles;
+using Services.SecurityService;
 using Services.SessionServices;
 using Services.StateServices;
 using Services.TokenServices;
@@ -75,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentAccessService, DocumentAccessService>();
         services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
         services.AddScoped<IFileSystemReadServiceUser, FileSystemRead_RepositoryUser>();
+        services.AddSingleton<IEncryptionService, AesEncryptionService>();
         services.AddScoped<IFolderProvisioner>(sp =>
             (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
         );
@@ -82,7 +85,8 @@ public static class ServiceCollectionExtensions
         // Handlers for RabbitMQ events
         services.AddScoped<CustomerCreatedEventHandler>();
         services.AddScoped<AccountRegisteredEventHandler>();
-        services.AddScoped<DocumentAccessRequestedEventHandler>();
+        // services.AddScoped<DocumentAccessRequestedEventHandler>();
+        services.AddScoped<SecureDocumentAccessRequestedEventHandler>();
 
         return services;
     }

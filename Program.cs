@@ -235,9 +235,10 @@ try
         bus.Subscribe<AccountRegisteredEvent, AccountRegisteredEventHandler>(
             "AccountRegisteredEvent"
         );
-        bus.Subscribe<DocumentAccessRequestedEvent, DocumentAccessRequestedEventHandler>(
-            "DocumentAccessRequestedEvent"
-        );
+        bus.Subscribe<
+            SecureDocumentAccessRequestedEvent,
+            SecureDocumentAccessRequestedEventHandler
+        >("SecureDocumentAccessRequestedEvent");
     }
 }
 catch (Exception ex)
