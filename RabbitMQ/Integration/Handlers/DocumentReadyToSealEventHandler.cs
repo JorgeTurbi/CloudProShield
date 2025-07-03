@@ -1,3 +1,4 @@
+using System;
 using CloudShield.Entities.Operations;
 using CloudShield.Services.OperationStorage;
 using CloudShield.Services.PdfSealing;
@@ -81,6 +82,12 @@ public sealed class DocumentReadyToSealEventHandler
                     e.Signatures
                 );
 
+                Console.WriteLine(
+                    "Documento original {DocumentId} sellado con {SignatureCount} firmas.",
+                    e.DocumentId,
+                    e.Signatures.Count
+                );
+
                 // 4. Guardar el nuevo documento sellado
                 var originalFileName = Path.GetFileNameWithoutExtension(originalFileMeta.FileName);
                 var sealedFileName =
@@ -103,7 +110,7 @@ public sealed class DocumentReadyToSealEventHandler
                     customerId, // Usamos la variable que obtuvimos
                     formFile,
                     ct,
-                    "SignedDocuments"
+                    "Firms"
                 );
 
                 if (!savedOk)
