@@ -2,6 +2,7 @@ using CloudShield.Repositories.Users;
 using CloudShield.Services.FileSystemRead_Repository;
 using CloudShield.Services.FileSystemServices;
 using CloudShield.Services.OperationStorage;
+using CloudShield.Services.PdfSealing;
 using Commons.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Integration.Handlers;
@@ -77,6 +78,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentAccessService, DocumentAccessService>();
         services.AddScoped<IFileSystemReadService, FileSystemRead_Repository>();
         services.AddScoped<IFileSystemReadServiceUser, FileSystemRead_RepositoryUser>();
+        services.AddScoped<IPdfSealingService, PdfSealingService>();
         services.AddSingleton<IEncryptionService, AesEncryptionService>();
         services.AddScoped<IFolderProvisioner>(sp =>
             (IFolderProvisioner)sp.GetRequiredService<IStorageService>()
@@ -87,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AccountRegisteredEventHandler>();
         // services.AddScoped<DocumentAccessRequestedEventHandler>();
         services.AddScoped<SecureDocumentAccessRequestedEventHandler>();
+        services.AddScoped<DocumentReadyToSealEventHandler>();
 
         return services;
     }

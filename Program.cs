@@ -239,6 +239,9 @@ try
             SecureDocumentAccessRequestedEvent,
             SecureDocumentAccessRequestedEventHandler
         >("SecureDocumentAccessRequestedEvent");
+        bus.Subscribe<DocumentReadyToSealEvent, DocumentReadyToSealEventHandler>(
+            "DocumentReadyToSealEvent"
+        );
     }
 }
 catch (Exception ex)

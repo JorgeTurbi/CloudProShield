@@ -359,6 +359,13 @@ public class LocalDiskStorageService : IStorageService, IFolderProvisioner
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<FileResource?> FindMetaByIdAsync(Guid documentId, CancellationToken ct)
+    {
+        return await _db
+            .FileResources.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == documentId, ct);
+    }
+
     public async Task<(bool ok, Stream content, string reason)> GetFolderZipAsync(
         Guid customerId,
         string folder,

@@ -43,4 +43,5 @@ public interface IStorageService
         CancellationToken ct
     );
     Task<FileResource> FindMetaAsync(Guid customerId, string relativePath, CancellationToken ct);
+    Task<FileResource?> FindMetaByIdAsync(Guid documentId, CancellationToken ct);
 }
