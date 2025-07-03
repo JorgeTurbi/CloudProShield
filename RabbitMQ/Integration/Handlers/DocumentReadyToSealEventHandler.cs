@@ -82,7 +82,7 @@ public sealed class DocumentReadyToSealEventHandler
                     e.Signatures
                 );
 
-                Console.WriteLine(
+                _log.LogInformation(
                     "Documento original {DocumentId} sellado con {SignatureCount} firmas.",
                     e.DocumentId,
                     e.Signatures.Count
