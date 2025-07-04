@@ -26,4 +26,8 @@ public sealed record SignedImageDto(
     string ClientIp,
     string UserAgent,
     DateTime ConsentAgreedAtUtc
-);
+)
+{
+    public string? Label { get; init; } // “DocuSigned by:”
+    public string? HashTxt { get; init; } // “DFD21DC67BF1455…”
+};
