@@ -42,12 +42,12 @@ public sealed class DocumentReadyToSealEventHandler
 
         // 1. Obtener el metadato del documento original y su 'Space' para saber a qué cliente pertenece
         // CORRECCIÓN: Usamos el DbContext para hacer un 'Include' y traer la entidad 'Space' relacionada.
-        FileResource? originalFileMeta = await _db
+        FileResource? original = await _db
             .FileResources.AsNoTracking()
             .Include(fr => fr.Space) // <-- CARGAMOS LA ENTIDAD 'SPACE'
             .FirstOrDefaultAsync(fr => fr.Id == e.DocumentId, ct);
 
-        if (originalFileMeta == null || originalFileMeta.Space == null)
+        if (original == null || original.Space == null)
         {
             _log.LogError(
                 "No se encontró el metadato del documento original con ID: {DocumentId} o su Space asociado.",
@@ -57,115 +57,108 @@ public sealed class DocumentReadyToSealEventHandler
         }
 
         // CORRECCIÓN: Obtenemos el CustomerId desde la entidad Space navegada.
-        var customerId = originalFileMeta.Space.CustomerId;
+        var uploaderCustomerId = original.Space.CustomerId;
 
         // 2. Obtener el stream del documento original
-        (bool ok, Stream? contentStream, string? contentType, string? reason) =
-            await _storage.GetFileAsync(customerId, originalFileMeta.RelativePath, ct);
-        if (!ok || contentStream == null)
+        (bool ok, Stream? pdfStream, _, string? reason) = await _storage.GetFileAsync(
+            uploaderCustomerId,
+            original.RelativePath,
+            ct
+        );
+
+        if (!ok || pdfStream == null)
         {
-            _log.LogError(
-                "No se pudo obtener el archivo original {Path}: {Reason}",
-                originalFileMeta.RelativePath,
-                reason
-            );
+            _log.LogError("No se pudo leer PDF original: {Reason}", reason);
             return;
         }
 
-        using (contentStream)
+        await using (pdfStream)
         {
             try
             {
-                // 3. Aplicar firmas y sellar el documento
-                using var sealedPdfStream = await _pdfSealer.ApplySignaturesAndSealAsync(
-                    contentStream,
+                /* 3 ▸ estampar firmas + sello LTV */
+                using var sealedStream = await _pdfSealer.ApplySignaturesAndSealAsync(
+                    pdfStream,
                     e.Signatures
                 );
 
-                _log.LogInformation(
-                    "Documento original {DocumentId} sellado con {SignatureCount} firmas.",
-                    e.DocumentId,
-                    e.Signatures.Count
-                );
+                byte[] sealedBytes = sealedStream.ToArray(); // buffer para todos
+                string baseName = Path.GetFileNameWithoutExtension(original.FileName);
+                string sealedName = $"{baseName}-signed-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
 
-                // 4. Guardar el nuevo documento sellado
-                var originalFileName = Path.GetFileNameWithoutExtension(originalFileMeta.FileName);
-                var sealedFileName =
-                    $"{originalFileName}-signed-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
-
-                var formFile = new FormFile(
-                    sealedPdfStream,
-                    0,
-                    sealedPdfStream.Length,
-                    "pdf",
-                    sealedFileName
-                )
-                {
-                    Headers = new HeaderDictionary(),
-                    ContentType = "application/pdf",
-                };
-
-                // Guardamos en una carpeta dedicada para documentos firmados
-                (bool savedOk, string? savedPathOrReason) = await _storage.SaveFileAsync(
-                    customerId, // Usamos la variable que obtuvimos
-                    formFile,
-                    ct,
-                    "Firms"
-                );
-
-                if (!savedOk)
-                {
-                    _log.LogError(
-                        "Error al guardar el documento sellado: {Reason}",
-                        savedPathOrReason
-                    );
-                    return;
-                }
-
-                // 5. Obtener el metadato del nuevo archivo para tener su ID
-                var sealedFileMeta = await _storage.FindMetaAsync(
-                    customerId,
-                    savedPathOrReason!,
+                /* 4 ▸ guardar en uploader y cada firmante  */
+                string? uploaderRel = await SaveForCustomerAsync(
+                    uploaderCustomerId,
+                    sealedBytes,
+                    sealedName,
                     ct
                 );
-                if (sealedFileMeta == null)
+
+                foreach (var cid in e.Signatures.Select(s => s.CustomerId).Distinct())
                 {
-                    _log.LogError(
-                        "No se encontró el metadato del archivo recién guardado en {Path}",
-                        savedPathOrReason
-                    );
+                    if (cid != uploaderCustomerId)
+                        await SaveForCustomerAsync(cid, sealedBytes, sealedName, ct);
+                }
+
+                if (uploaderRel is null)
+                {
+                    _log.LogError("No se pudo guardar el PDF sellado para el uploader");
                     return;
                 }
 
-                // 6. Publicar evento de éxito
-                var successEvent = new DocumentSealedEvent
+                /* 5 ▸ leer metadato del archivo recién guardado (uploader) */
+                var sealedMeta = await _storage.FindMetaAsync(uploaderCustomerId, uploaderRel, ct);
+                if (sealedMeta is null)
+                {
+                    _log.LogError("Metadato no encontrado para {Path}", uploaderRel);
+                    return;
+                }
+
+                /* 6 ▸ publicar evento DocumentSealed */
+                var ev = new DocumentSealedEvent
                 {
                     Id = Guid.NewGuid(),
                     OccurredOn = DateTime.UtcNow,
                     SignatureRequestId = e.SignatureRequestId,
                     OriginalDocumentId = e.DocumentId,
-                    SealedDocumentId = sealedFileMeta.Id,
-                    SealedDocumentRelativePath = sealedFileMeta.RelativePath,
+                    SealedDocumentId = sealedMeta.Id,
+                    SealedDocumentRelativePath = sealedMeta.RelativePath,
                     SignerEmails = e.Signatures.Select(s => s.SignerEmail).ToList(),
                 };
 
-                _bus.Publish("DocumentSealedEvent", successEvent);
-
-                _log.LogInformation(
-                    "Documento {DocumentId} sellado y guardado exitosamente en {Path}",
-                    e.DocumentId,
-                    savedPathOrReason
-                );
+                _bus.Publish(nameof(DocumentSealedEvent), ev);
+                _log.LogInformation("Documento sellado almacenado en {Path}", uploaderRel);
             }
             catch (Exception ex)
             {
-                _log.LogCritical(
-                    ex,
-                    "Fallo crítico en el proceso de sellado para DocumentId: {DocumentId}",
-                    e.DocumentId
-                );
+                _log.LogCritical(ex, "Fallo crítico sellando Doc {Doc}", e.DocumentId);
                 throw;
             }
         }
+    }
+
+    /* ───────── helper ───────── */
+    async Task<string?> SaveForCustomerAsync(
+        Guid customerId,
+        byte[] pdfBytes,
+        string fileName,
+        CancellationToken ct
+    )
+    {
+        await using var ms = new MemoryStream(pdfBytes, writable: false);
+        var form = new FormFile(ms, 0, ms.Length, "pdf", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/pdf",
+        };
+
+        (bool ok, string? rel) = await _storage.SaveFileAsync(customerId, form, ct, "Firms");
+
+        if (ok)
+            _log.LogInformation("PDF guardado para cliente {Cid} en {Rel}", customerId, rel);
+        else
+            _log.LogError("No se pudo guardar PDF para cliente {Cid}", customerId);
+
+        return ok ? rel : null;
     }
 }

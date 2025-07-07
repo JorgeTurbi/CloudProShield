@@ -13,6 +13,7 @@ public sealed record DocumentReadyToSealEvent(
 );
 
 public sealed record SignedImageDto(
+    Guid CustomerId,
     Guid SignerId,
     string SignerEmail,
     int Page,
