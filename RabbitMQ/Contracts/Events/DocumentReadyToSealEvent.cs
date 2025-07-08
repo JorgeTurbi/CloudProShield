@@ -31,7 +31,7 @@ public sealed record SignedImageDto(
     float PosY,
     float Width,
     float Height,
-    string ImageBase64, // firma en PNG-base64
+    string? ImageBase64, // firma en PNG-base64
     string Thumbprint,
     DateTime SignedAtUtc,
     string ClientIp,

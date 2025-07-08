@@ -95,89 +95,92 @@ public sealed class PdfSealingService : IPdfSealingService
         foreach (var s in sigs)
         {
             // ─── 1) Firma (imagen PNG) ──────────────────────────────────────────
-            byte[] png = UpscaleSignature(s.ImageBase64, s.Width, s.Height);
-            doc.Add(
-                new iText.Layout.Element.Image(ImageDataFactory.Create(png))
-                    .SetFixedPosition(s.Page, s.PosX, s.PosY)
-                    .ScaleToFit(s.Width, s.Height)
-            );
 
-            // ═══ geometría general ═════════════════════════════════════════════
-            float left = s.PosX;
-            float bottom = s.PosY - HASH_H - PAD;
-            float right = s.PosX + s.Width;
-            float top = s.PosY + s.Height + LABEL_H + PAD;
+            bool hasSignature = !string.IsNullOrWhiteSpace(s.ImageBase64);
 
-            float yLabel = top - LABEL_H + 1; // baseline del label
-            float yHash = bottom + 2; // baseline del hash
+            /* 1) ── Firma PNG (solo si existe) ─────────────────────────── */
+            if (hasSignature)
+            {
+                byte[] png = UpscaleSignature(s.ImageBase64!, s.Width, s.Height);
+                doc.Add(
+                    new ITextImage(ImageDataFactory.Create(png))
+                        .SetFixedPosition(s.Page, s.PosX, s.PosY)
+                        .ScaleToFit(s.Width, s.Height)
+                );
+            }
 
-            // ─── 2) Textos ─────────────────────────────────────────────────────
-            var cvs = new Canvas(
-                new PdfCanvas(pdfDoc.GetPage(s.Page)),
-                new iText.Kernel.Geom.Rectangle(left, bottom, right - left, top - bottom)
-            );
+            if (hasSignature)
+            {
+                // ═══ geometría general ═════════════════════════════════════════════
+                float left = s.PosX;
+                float bottom = s.PosY - HASH_H - PAD;
+                float right = s.PosX + s.Width;
+                float top = s.PosY + s.Height + LABEL_H + PAD;
 
-            cvs.SetFont(bold)
-                .SetFontSize(8)
-                .ShowTextAligned("Signed by:", left + PAD, yLabel, TextAlignment.LEFT);
+                float yLabel = top - LABEL_H + 1; // baseline del label
+                float yHash = bottom + 2; // baseline del hash
 
-            string thumb = s.Thumbprint[..16] + "…";
-            cvs.SetFont(reg)
-                .SetFontSize(6)
-                .SetFontColor(DeviceGray.GRAY)
-                .ShowTextAligned(thumb, left + PAD, yHash, TextAlignment.LEFT);
+                // ─── 2) Textos ─────────────────────────────────────────────────────
+                var cvs = new Canvas(
+                    new PdfCanvas(pdfDoc.GetPage(s.Page)),
+                    new iText.Kernel.Geom.Rectangle(left, bottom, right - left, top - bottom)
+                );
 
-            // ─── 3) Bracket azul  ──────────────────────────────────────────────
-            var bc = new PdfCanvas(pdfDoc.GetPage(s.Page))
-                .SetStrokeColor(new DeviceRgb(0, 109, 183))
-                .SetLineWidth(1.1f)
-                .SetLineCapStyle(PdfCanvasConstants.LineCapStyle.ROUND)
-                .SetLineJoinStyle(PdfCanvasConstants.LineJoinStyle.ROUND);
+                cvs.SetFont(bold)
+                    .SetFontSize(8)
+                    .ShowTextAligned("Signed by:", left + PAD, yLabel, TextAlignment.LEFT);
 
-            // vertical
-            bc.MoveTo(left, bottom + R).LineTo(left, top - R);
+                string thumb = s.Thumbprint[..16] + "…";
+                cvs.SetFont(reg)
+                    .SetFontSize(6)
+                    .SetFontColor(DeviceGray.GRAY)
+                    .ShowTextAligned(thumb, left + PAD, yHash, TextAlignment.LEFT);
 
-            // arco superior 180 ° → 90 °
-            bc.Arc(left, top - 2 * R, left + 2 * R, top, 170, -80);
+                // ─── 3) Bracket azul  ──────────────────────────────────────────────
+                var bc = new PdfCanvas(pdfDoc.GetPage(s.Page))
+                    .SetStrokeColor(new DeviceRgb(0, 109, 183))
+                    .SetLineWidth(1.1f)
+                    .SetLineCapStyle(PdfCanvasConstants.LineCapStyle.ROUND)
+                    .SetLineJoinStyle(PdfCanvasConstants.LineJoinStyle.ROUND);
 
-            // brazo superior
-            bc.LineTo(left + ARM, top);
+                // vertical
+                bc.MoveTo(left, bottom + R).LineTo(left, top - R);
 
-            // brazo inferior
-            bc.MoveTo(left + ARM, bottom);
+                // arco superior 180 ° → 90 °
+                bc.Arc(left, top - 2 * R, left + 2 * R, top, 170, -80);
 
-            // arco inferior  180 ° → 270 °
-            bc.Arc(left, bottom, left + 2 * R, bottom + 2 * R, 180, 80);
+                // brazo superior
+                bc.LineTo(left + ARM, top);
 
-            bc.Stroke();
+                // brazo inferior
+                bc.MoveTo(left + ARM, bottom);
+
+                // arco inferior  180 ° → 270 °
+                bc.Arc(left, bottom, left + 2 * R, bottom + 2 * R, 180, 80);
+
+                bc.Stroke();
+            }
 
             // ------------- Iniciales ----------------------------------------------
             if (s.InitialStamp is not null)
             {
                 var p = s.InitialStamp;
 
-                // contenedor exacto de la cajita
-                var area = new iText.Kernel.Geom.Rectangle(p.PosX, p.PosY, p.Width, p.Height);
-
-                var cvsInit = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), area);
+                float fontH = p.Height * 0.7f; // ➜ ~70 % del alto de la caja
+                var pageRect = pdfDoc.GetPage(s.Page).GetPageSize(); //  <-- Rectangle
+                var cvsInit = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), pageRect);
 
                 cvsInit
                     .SetFont(bold)
-                    .SetFontSize(9)
+                    .SetFontSize(fontH)
                     .ShowTextAligned(
                         p.Text,
-                        p.PosX + 2, // un pequeño margen
-                        p.PosY + p.Height / 2, // centro vertical
-                        TextAlignment.LEFT,
+                        p.PosX + p.Width / 2, // 🔹 centro horizontal
+                        p.PosY + p.Height / 2, // 🔹 centro vertical
+                        TextAlignment.CENTER,
                         VerticalAlignment.MIDDLE,
                         0f
-                    ); // 🔑 rotación = 0
-
-                // marco fino
-                new PdfCanvas(pdfDoc.GetPage(s.Page))
-                    .Rectangle(p.PosX, p.PosY, p.Width, p.Height)
-                    .SetLineWidth(0.5f)
-                    .Stroke();
+                    );
             }
 
             // ------------- Fecha ---------------------------------------------------
@@ -185,20 +188,21 @@ public sealed class PdfSealingService : IPdfSealingService
             {
                 var p = s.DateStamp;
 
-                var area = new iText.Kernel.Geom.Rectangle(p.PosX, p.PosY, p.Width, p.Height);
-                var cvsDate = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), area);
+                float fontH = p.Height * 0.6f; // ➜ ~60 % del alto
+                var pageRect = pdfDoc.GetPage(s.Page).GetPageSize();
+                var cvsDate = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), pageRect);
 
                 cvsDate
-                    .SetFont(reg)
-                    .SetFontSize(8)
+                    .SetFont(reg) // regular, no bold
+                    .SetFontSize(fontH)
                     .ShowTextAligned(
                         p.Text,
-                        p.PosX + 2,
+                        p.PosX + p.Width / 2,
                         p.PosY + p.Height / 2,
-                        TextAlignment.LEFT,
+                        TextAlignment.CENTER,
                         VerticalAlignment.MIDDLE,
                         0f
-                    ); // 🔑 rotación = 0
+                    );
             }
         }
 
