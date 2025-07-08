@@ -150,6 +150,56 @@ public sealed class PdfSealingService : IPdfSealingService
             bc.Arc(left, bottom, left + 2 * R, bottom + 2 * R, 180, 80);
 
             bc.Stroke();
+
+            // ------------- Iniciales ----------------------------------------------
+            if (s.InitialStamp is not null)
+            {
+                var p = s.InitialStamp;
+
+                // contenedor exacto de la cajita
+                var area = new iText.Kernel.Geom.Rectangle(p.PosX, p.PosY, p.Width, p.Height);
+
+                var cvsInit = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), area);
+
+                cvsInit
+                    .SetFont(bold)
+                    .SetFontSize(9)
+                    .ShowTextAligned(
+                        p.Text,
+                        p.PosX + 2, // un pequeño margen
+                        p.PosY + p.Height / 2, // centro vertical
+                        TextAlignment.LEFT,
+                        VerticalAlignment.MIDDLE,
+                        0f
+                    ); // 🔑 rotación = 0
+
+                // marco fino
+                new PdfCanvas(pdfDoc.GetPage(s.Page))
+                    .Rectangle(p.PosX, p.PosY, p.Width, p.Height)
+                    .SetLineWidth(0.5f)
+                    .Stroke();
+            }
+
+            // ------------- Fecha ---------------------------------------------------
+            if (s.DateStamp is not null)
+            {
+                var p = s.DateStamp;
+
+                var area = new iText.Kernel.Geom.Rectangle(p.PosX, p.PosY, p.Width, p.Height);
+                var cvsDate = new Canvas(new PdfCanvas(pdfDoc.GetPage(s.Page)), area);
+
+                cvsDate
+                    .SetFont(reg)
+                    .SetFontSize(8)
+                    .ShowTextAligned(
+                        p.Text,
+                        p.PosX + 2,
+                        p.PosY + p.Height / 2,
+                        TextAlignment.LEFT,
+                        VerticalAlignment.MIDDLE,
+                        0f
+                    ); // 🔑 rotación = 0
+            }
         }
 
         doc.Close();

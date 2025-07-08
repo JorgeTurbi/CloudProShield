@@ -12,6 +12,16 @@ public sealed record DocumentReadyToSealEvent(
     IReadOnlyList<SignedImageDto> Signatures
 );
 
+public sealed record InitialStampDto(
+    string Text,
+    float PosX,
+    float PosY,
+    float Width,
+    float Height
+);
+
+public sealed record DateStampDto(string Text, float PosX, float PosY, float Width, float Height);
+
 public sealed record SignedImageDto(
     Guid CustomerId,
     Guid SignerId,
@@ -26,7 +36,9 @@ public sealed record SignedImageDto(
     DateTime SignedAtUtc,
     string ClientIp,
     string UserAgent,
-    DateTime ConsentAgreedAtUtc
+    DateTime ConsentAgreedAtUtc,
+    InitialStampDto? InitialStamp,
+    DateStampDto? DateStamp
 )
 {
     public string? Label { get; init; } // “DocuSigned by:”
