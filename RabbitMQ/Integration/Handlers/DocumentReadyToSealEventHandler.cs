@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using CloudShield.Entities.Operations;
 using CloudShield.Services.OperationStorage;
 using CloudShield.Services.PdfSealing;
@@ -6,6 +8,7 @@ using DataContext; // <-- AÑADIR ESTE USING PARA ACCEDER AL DBCONTEXT
 using Microsoft.EntityFrameworkCore; // <-- AÑADIR ESTE USING PARA EL MÉTODO 'INCLUDE'
 using RabbitMQ.Contracts.Events;
 using RabbitMQ.Messaging;
+using Services.SecurityService;
 
 namespace RabbitMQ.Integration.Handlers;
 
@@ -14,16 +17,20 @@ public sealed class DocumentReadyToSealEventHandler
 {
     private readonly IStorageService _storage;
     private readonly IPdfSealingService _pdfSealer;
+    private readonly IEncryptionService _encryption;
+    private readonly IDocumentAccessService _documentAccess;
     private readonly IEventBus _bus;
     private readonly ILogger<DocumentReadyToSealEventHandler> _log;
-    private readonly ApplicationDbContext _db; // <-- INYECTAR EL DBCONTEXT
+    private readonly ApplicationDbContext _db;
 
     public DocumentReadyToSealEventHandler(
         IStorageService storage,
         IPdfSealingService pdfSealer,
         IEventBus bus,
         ILogger<DocumentReadyToSealEventHandler> log,
-        ApplicationDbContext db
+        ApplicationDbContext db,
+        IEncryptionService encryption,
+        IDocumentAccessService documentAccess
     ) // <-- INYECTAR EL DBCONTEXT
     {
         _storage = storage;
@@ -31,6 +38,8 @@ public sealed class DocumentReadyToSealEventHandler
         _bus = bus;
         _log = log;
         _db = db; // <-- ASIGNAR EL DBCONTEXT
+        _encryption = encryption;
+        _documentAccess = documentAccess;
     }
 
     public async Task HandleAsync(DocumentReadyToSealEvent e, CancellationToken ct)
@@ -114,6 +123,68 @@ public sealed class DocumentReadyToSealEventHandler
                     return;
                 }
 
+                foreach (var signerGroup in e.Signatures.GroupBy(s => (s.SignerId, s.SignerEmail)))
+                {
+                    try
+                    {
+                        var signerId = signerGroup.Key.SignerId;
+                        var signerEmail = signerGroup.Key.SignerEmail;
+
+                        // 1. Generar credenciales de acceso
+                        var accessToken = Guid.NewGuid().ToString("N");
+                        var sessionId = GenerateRandomHex(16); // helper
+                        var requestFingerprint = GenerateFingerprint(
+                            sealedMeta.Id,
+                            signerId,
+                            sessionId
+                        );
+                        var expiresAt = DateTime.UtcNow.AddDays(7);
+
+                        var payload = new DocumentAccessPayload
+                        {
+                            SignerId = signerId,
+                            SignerEmail = signerEmail,
+                            AccessToken = accessToken,
+                            SessionId = sessionId,
+                            RequestFingerprint = requestFingerprint,
+                        };
+
+                        var encrypted = _encryption.Encrypt(payload);
+                        var hash = ComputePayloadHash(payload);
+
+                        // 2. Preparar acceso local (cache)
+                        await _documentAccess.PrepareSecureDocumentAccessAsync(
+                            sealedMeta.Id,
+                            signerId,
+                            accessToken,
+                            sessionId,
+                            requestFingerprint,
+                            expiresAt,
+                            ct
+                        );
+
+                        // 3. Publicar evento seguro para email
+                        var evAccess = new SecureDownloadSignedDocument(
+                            Id: Guid.NewGuid(),
+                            OccurredOn: DateTime.UtcNow,
+                            SealedDocumentId: sealedMeta.Id,
+                            EncryptedPayload: encrypted,
+                            PayloadHash: hash,
+                            ExpiresAt: expiresAt
+                        );
+
+                        _bus.Publish(nameof(SecureDownloadSignedDocument), evAccess);
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogError(
+                            ex,
+                            "No se pudo preparar acceso para {Email}",
+                            signerGroup.Key.SignerEmail
+                        );
+                    }
+                }
+
                 /* 6 ▸ publicar evento DocumentSealed */
                 var ev = new DocumentSealedEvent
                 {
@@ -160,5 +231,28 @@ public sealed class DocumentReadyToSealEventHandler
             _log.LogError("No se pudo guardar PDF para cliente {Cid}", customerId);
 
         return ok ? rel : null;
+    }
+
+    private static string GenerateRandomHex(int bytesLen)
+    {
+        var bytes = new byte[bytesLen];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string GenerateFingerprint(Guid sealedDocId, Guid signerId, string sessionId)
+    {
+        var data = $"{sealedDocId}:{signerId}:{sessionId}:{DateTime.UtcNow:yyyyMMddHHmmss}";
+        using var sha = SHA256.Create();
+        return Convert
+            .ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(data)))[..16]
+            .ToLowerInvariant();
+    }
+
+    private static string ComputePayloadHash(DocumentAccessPayload p)
+    {
+        var data = $"{p.SignerId}:{p.AccessToken}:{p.SessionId}:{p.RequestFingerprint}";
+        using var sha = SHA256.Create();
+        return Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(data)));
     }
 }

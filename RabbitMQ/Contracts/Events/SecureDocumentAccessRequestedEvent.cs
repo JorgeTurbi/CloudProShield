@@ -10,6 +10,15 @@ public sealed record SecureDocumentAccessRequestedEvent
     public DateTime ExpiresAt { get; init; }
 }
 
+public sealed record SecureDownloadSignedDocument(
+    Guid Id,
+    DateTime OccurredOn,
+    Guid SealedDocumentId,
+    string EncryptedPayload,
+    string PayloadHash,
+    DateTime ExpiresAt
+);
+
 // Payload que se cifra
 public sealed record DocumentAccessPayload
 {
