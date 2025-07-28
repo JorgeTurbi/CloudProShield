@@ -10,17 +10,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using RabbitMQ.Client;
-using RabbitMQ.Contracts.Events;
-using RabbitMQ.Integration.Handlers;
 using RabbitMQ.Messaging;
+using RabbitMQ.Messaging.Health;
 using RabbitMQ.Messaging.Rabbit;
 using RazorLight;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Elimina los loggers predeterminados de ASP.NET Core
+// ✅ CONFIGURACIÓN DE LOGGING
 builder.Logging.ClearProviders();
 
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
@@ -32,7 +30,6 @@ if (!Directory.Exists(logFolderPath))
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    // .WriteTo.Console()
     .WriteTo.File(
         Path.Combine(logFolderPath, "LogsApplication-.txt"),
         rollingInterval: RollingInterval.Day
@@ -41,10 +38,10 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog(Log.Logger, dispose: true);
 
-// ✅ MOSTRAR INFORMACIÓN DE INICIO TEMPRANO
 Console.WriteLine("🚀 Iniciando CloudProShield API...");
 Console.WriteLine($"📁 Logs guardados en: {logFolderPath}");
 
+// ✅ CONFIGURACIÓN DE LÍMITES DE ARCHIVOS
 builder.Services.Configure<FormOptions>(o =>
 {
     o.MultipartBodyLengthLimit = 5L * 1024 * 1024 * 1024; // 5 GB
@@ -55,7 +52,7 @@ builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = 5L * 1024 * 1024 * 1024; // 5 GB
 });
 
-//todo add cors policy
+// ✅ CORS POLICY
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -67,7 +64,8 @@ builder.Services.AddCors(options =>
     );
 });
 
-var jwtSettin = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+// ✅ JWT AUTHENTICATION
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
 builder
     .Services.AddAuthentication(options =>
@@ -77,8 +75,7 @@ builder
     })
     .AddJwtBearer(options =>
     {
-        var key = Encoding.UTF8.GetBytes(jwtSettin!.SecretKey);
-
+        var key = Encoding.UTF8.GetBytes(jwtSettings!.SecretKey);
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
@@ -86,73 +83,19 @@ builder
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
-            ClockSkew = TimeSpan.Zero, // sin tolerancia de expiración
+            ClockSkew = TimeSpan.Zero,
         };
     });
 
 builder.Services.AddAuthorization();
 
-//todo services configuration
+// ✅ SERVICIOS PERSONALIZADOS
 builder.Services.AddCustomRepostories();
 
-// CONFIGURACIÓN ROBUSTA DE RABBITMQ INTEGRADA
-var rabbitMQEnabled = builder.Configuration.GetValue<bool>("RabbitMQ:Enabled", true);
+// ✅ RABBITMQ CON RECONEXIÓN AUTOMÁTICA (NO BLOQUEANTE)
+builder.Services.AddRabbitMQEventBus(builder.Configuration);
 
-if (rabbitMQEnabled)
-{
-    // Verificar conectividad a RabbitMQ al inicio
-    bool isRabbitMQAvailable = false;
-    try
-    {
-        var factory = new ConnectionFactory
-        {
-            HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost",
-            Port = int.Parse(builder.Configuration["RabbitMQ:Port"] ?? "5672"),
-            UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest",
-            Password = builder.Configuration["RabbitMQ:Password"] ?? "guest",
-            RequestedConnectionTimeout = TimeSpan.FromSeconds(5),
-            RequestedHeartbeat = TimeSpan.FromSeconds(10),
-        };
-
-        using var testConnection = factory.CreateConnection();
-        using var testChannel = testConnection.CreateModel();
-        testChannel.ExchangeDeclare(
-            "startup-test",
-            ExchangeType.Direct,
-            durable: false,
-            autoDelete: true
-        );
-
-        isRabbitMQAvailable = true;
-        builder.Services.AddSingleton<IEventBus, EventBusRabbitMq>();
-        Console.WriteLine("✅ RabbitMQ disponible - usando EventBusRabbitMq");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  RabbitMQ no disponible: {ex.Message} - usando NoOpEventBus");
-        isRabbitMQAvailable = false;
-    }
-
-    if (!isRabbitMQAvailable)
-    {
-        // Implementación No-Op inline
-        builder.Services.AddSingleton<IEventBus>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<IEventBus>>();
-            return new NoOpEventBus(logger);
-        });
-    }
-}
-else
-{
-    Console.WriteLine("🔕 RabbitMQ deshabilitado en configuración - usando NoOpEventBus");
-    builder.Services.AddSingleton<IEventBus>(sp =>
-    {
-        var logger = sp.GetRequiredService<ILogger<IEventBus>>();
-        return new NoOpEventBus(logger);
-    });
-}
-
+// ✅ RAZOR LIGHT ENGINE
 builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
@@ -164,24 +107,23 @@ builder.Services.AddSingleton(sp =>
         .Build();
 });
 
+// ✅ CONTROLADORES Y AUTOMAPPER
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddAutoMapper(typeof(FileSystemProfile));
 
-// Add services to the container.
+// ✅ ENTITY FRAMEWORK
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-// Usar Swashbuckle para mejor compatibilidad
+// ✅ SWAGGER/OPENAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Services TaxCloud API", Version = "v1" });
 
-    // Configuración de JWT para Swagger
     c.AddSecurityDefinition(
         "Bearer",
         new OpenApiSecurityScheme
@@ -215,39 +157,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-// ✅ SWAGGER CON SWASHBUCKLE
+// ✅ PIPELINE DE MIDDLEWARES
 app.UseSwagger();
 app.UseSwaggerUI(o =>
 {
     o.SwaggerEndpoint("/swagger/v1/swagger.json", "Services TaxCloud V1");
     o.RoutePrefix = "swagger";
 });
-
-// ✅ CONFIGURACIÓN DE SUSCRIPCIONES RABBITMQ INTEGRADA
-try
-{
-    var bus = app.Services.GetRequiredService<IEventBus>();
-
-    if (bus is EventBusRabbitMq)
-    {
-        bus.Subscribe<CustomerCreatedEvent, CustomerCreatedEventHandler>("CustomerCreatedEvent");
-        bus.Subscribe<AccountRegisteredEvent, AccountRegisteredEventHandler>(
-            "AccountRegisteredEvent"
-        );
-        bus.Subscribe<
-            SecureDocumentAccessRequestedEvent,
-            SecureDocumentAccessRequestedEventHandler
-        >("SecureDocumentAccessRequestedEvent");
-        bus.Subscribe<DocumentReadyToSealEvent, DocumentReadyToSealEventHandler>(
-            "DocumentReadyToSealEvent"
-        );
-    }
-}
-catch (Exception ex)
-{
-    app.Logger.LogWarning("Messaging no disponible: {Message}", ex.Message);
-}
 
 // ReDoc solo en desarrollo
 if (app.Environment.IsDevelopment())
@@ -262,7 +178,6 @@ if (app.Environment.IsDevelopment())
 app.UseSerilogRequestLogging();
 app.UseCors("AllowAllOrigins");
 
-// ✅ HTTPS REDIRECTION SOLO SI HAY PUERTO HTTPS CONFIGURADO
 if (app.Environment.IsProduction())
 {
     app.UseHttpsRedirection();
@@ -284,39 +199,63 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// ✅ CONFIGURAR SUSCRIPCIONES RABBITMQ (NO BLOQUEANTE)
+app.ConfigureRabbitMQSubscriptions();
+
 // ✅ HEALTH CHECK ENDPOINTS
 app.MapGet(
     "/health",
-    () =>
-        Results.Ok(
+    (IServiceProvider services) =>
+    {
+        var bus = services.GetRequiredService<IEventBus>();
+        var healthService = services.GetService<IRabbitMQHealthService>();
+
+        return Results.Ok(
             new
             {
                 status = "Healthy",
                 timestamp = DateTime.UtcNow,
-                rabbitmq = app.Services.GetRequiredService<IEventBus>() is EventBusRabbitMq
-                    ? "Connected"
-                    : "Disabled/Unavailable",
+                rabbitmq = new
+                {
+                    enabled = healthService != null,
+                    healthy = healthService?.IsHealthy ?? false,
+                    eventbus_type = bus.GetType().Name,
+                    mode = bus is EventBusRabbitMq ? "Full" : "Degraded",
+                },
             }
-        )
+        );
+    }
 );
 
 app.MapGet(
     "/health/rabbitmq",
-    () =>
+    async (IServiceProvider services) =>
     {
-        var bus = app.Services.GetRequiredService<IEventBus>();
-        if (bus is EventBusRabbitMq)
+        var healthService = services.GetService<IRabbitMQHealthService>();
+        if (healthService == null)
         {
-            return Results.Ok(new { status = "Healthy", message = "RabbitMQ connected" });
+            return Results.Json(
+                new { status = "Disabled", message = "RabbitMQ not configured" },
+                statusCode: 503
+            );
         }
+
+        var isHealthy = await healthService.CheckHealthAsync();
+        if (isHealthy)
+        {
+            return Results.Ok(
+                new { status = "Healthy", message = "RabbitMQ connected and operational" }
+            );
+        }
+
         return Results.Json(
-            new { status = "Unavailable", message = "RabbitMQ not available" },
+            new { status = "Unavailable", message = "RabbitMQ not reachable" },
             statusCode: 503
         );
     }
 );
 
-// ✅ MENSAJES DE INICIO PROMINENTES
+// ✅ MENSAJES DE INICIO
 Console.WriteLine("\n" + new string('=', 60));
 Console.WriteLine("🌟 CLOUDPROSHIELD API INICIADA EXITOSAMENTE");
 Console.WriteLine(new string('=', 60));
@@ -328,11 +267,12 @@ foreach (var url in urls)
     Console.WriteLine($"🌐 Servidor disponible en: {url}");
     Console.WriteLine($"📚 Swagger UI: {url}/swagger");
     Console.WriteLine($"❤️  Health Check: {url}/health");
+    Console.WriteLine($"🐰 RabbitMQ Health: {url}/health/rabbitmq");
 }
 
 Console.WriteLine(new string('=', 60));
 
-// ✅ ABRIR SWAGGER AUTOMÁTICAMENTE EN DESARROLLO
+// ✅ ABRIR SWAGGER EN DESARROLLO
 if (app.Environment.IsDevelopment())
 {
     var url = urls.FirstOrDefault()?.Replace("*", "localhost") ?? "http://localhost:5009";
@@ -358,25 +298,3 @@ if (app.Environment.IsDevelopment())
 Console.WriteLine("\n✅ Presiona Ctrl+C para detener el servidor\n");
 
 app.Run();
-
-// ✅ IMPLEMENTACIÓN NO-OP MEJORADA
-public sealed class NoOpEventBus : IEventBus
-{
-    private readonly ILogger<IEventBus> _logger;
-
-    public NoOpEventBus(ILogger<IEventBus> logger)
-    {
-        _logger = logger;
-    }
-
-    public void Publish(string routingKey, object message)
-    {
-        _logger.LogDebug("Evento {RoutingKey} omitido - RabbitMQ no disponible", routingKey);
-    }
-
-    public void Subscribe<TEvent, THandler>(string routingKey)
-        where THandler : IIntegrationEventHandler<TEvent>
-    {
-        _logger.LogDebug("Suscripción {RoutingKey} omitida - RabbitMQ no disponible", routingKey);
-    }
-}
