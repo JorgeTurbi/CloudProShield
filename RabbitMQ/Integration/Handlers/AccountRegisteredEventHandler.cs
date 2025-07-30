@@ -22,11 +22,24 @@ public sealed class AccountRegisteredEventHandler : IIntegrationEventHandler<Acc
     {
         try
         {
+            // ✅ Log mejorado para debugging
+            _log.LogInformation(
+                "Processing AccountRegisteredEvent for {Email} (IsCompany: {IsCompany}, UserId: {UserId})",
+                e.Email,
+                e.IsCompany,
+                e.UserId
+            );
+
             await _prov.ProvisionAsync(e, ct);
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Error aprovisionando {Email}", e.Email);
+            _log.LogError(
+                ex,
+                "Error provisioning account for {Email} (UserId: {UserId})",
+                e.Email,
+                e.UserId
+            );
             throw;
         }
     }

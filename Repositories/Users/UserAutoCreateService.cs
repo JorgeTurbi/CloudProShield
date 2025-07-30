@@ -1,5 +1,4 @@
 using AutoMapper;
-using CloudShield.DTOs.FileSystem;
 using CloudShield.Entities.Operations;
 using Commons;
 using Commons.Hash;
@@ -39,18 +38,47 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrEmpty(userDTO.Email))
+        // Validaciones mejoradas
+        if (string.IsNullOrWhiteSpace(userDTO.Email))
         {
             _log.LogError("Email Account Invalid {Email}", userDTO.Email);
             return new ApiResponse<bool>(false, "Email Account Invalid");
         }
 
-        // Verificar si el usuario ya existe
-        if (await UserExists(userDTO.Id, userDTO.Email))
+        if (userDTO.Id == Guid.Empty)
         {
-            _log.LogInformation("User already exists in CloudShield {Email}", userDTO.Email);
-            return new ApiResponse<bool>(true, "User already exists");
+            _log.LogError("Invalid UserId provided: {UserId}", userDTO.Id);
+            return new ApiResponse<bool>(false, "Invalid UserId");
         }
+
+        var existingUser = await _context.User.FirstOrDefaultAsync(
+            u => u.Id == userDTO.Id || u.Email.ToLower() == userDTO.Email.ToLower(),
+            cancellationToken
+        );
+
+        if (existingUser != null)
+        {
+            _log.LogInformation(
+                "User already exists in CloudShield - ID: {UserId}, Email: {Email}. No action needed.",
+                userDTO.Id,
+                userDTO.Email
+            );
+            // IMPORTANTE: Retornar success = false para indicar que NO se creó el usuario
+            return new ApiResponse<bool>(false, "User already exists", false);
+        }
+
+        // Validar que existan Country y State
+        if (!await ValidateCountryAndState(userDTO.CountryId, userDTO.StateId, cancellationToken))
+        {
+            _log.LogError(
+                "Invalid CountryId: {CountryId} or StateId: {StateId}",
+                userDTO.CountryId,
+                userDTO.StateId
+            );
+            return new ApiResponse<bool>(false, "Invalid Country or State");
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
@@ -61,15 +89,15 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
             var user = new User
             {
                 Id = userDTO.Id, // IMPORTANTE: Usar el mismo GUID del AuthService
-                Name = userDTO.Name,
-                SurName = userDTO.SurName,
-                Dob = userDTO.Dob ?? DateTime.UtcNow.AddYears(-18), // Fecha por defecto si no viene
-                Email = userDTO.Email,
-                Password = hashedPassword, // Contraseña hasheada
-                Phone = userDTO.Phone,
-                IsActive = true, // Auto-activado desde AuthService
-                Confirm = true, // Auto-confirmado desde AuthService
-                ConfirmToken = string.Empty, // No necesario para cuentas auto-creadas
+                Name = userDTO.Name.Trim(),
+                SurName = userDTO.SurName?.Trim() ?? string.Empty,
+                Dob = userDTO.Dob ?? DateTime.UtcNow.AddYears(-25),
+                Email = userDTO.Email.Trim().ToLowerInvariant(),
+                Password = hashedPassword,
+                Phone = userDTO.Phone?.Trim() ?? string.Empty,
+                IsActive = true,
+                Confirm = true,
+                ConfirmToken = string.Empty,
                 CreateAt = DateTime.UtcNow,
                 ResetPasswordToken = string.Empty,
                 ResetPasswordExpires = DateTime.MinValue,
@@ -83,40 +111,41 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
 
             if (!userSaved)
             {
+                await transaction.RollbackAsync(cancellationToken);
                 _log.LogError("Failed to save user {Email}", userDTO.Email);
                 return new ApiResponse<bool>(false, "Failed to create user");
             }
 
-            _log.LogInformation("User auto-created from AuthService {Email}", userDTO.Email);
+            _log.LogInformation(
+                "User auto-created from AuthService - ID: {UserId}, Email: {Email}",
+                userDTO.Id,
+                userDTO.Email
+            );
 
             // Crear dirección con valores válidos
-            var addressResult = await CreateDefaultAddress(userDTO, cancellationToken);
+            var addressResult = await CreateAddressFromAuthService(userDTO, cancellationToken);
             if (!addressResult.Success)
             {
+                await transaction.RollbackAsync(cancellationToken);
                 _log.LogError(
                     "Failed to create address for user {Email}: {Message}",
                     userDTO.Email,
                     addressResult.Message
                 );
-                // Para debugging, logear los valores que se están enviando
-                _log.LogDebug(
-                    "Address values: CountryId={CountryId}, StateId={StateId}, City={City}, Street={Street}, ZipCode={ZipCode}",
-                    userDTO.CountryId,
-                    userDTO.StateId,
-                    userDTO.City,
-                    userDTO.Street,
-                    userDTO.ZipCode
+                return new ApiResponse<bool>(
+                    false,
+                    $"Failed to create address: {addressResult.Message}"
                 );
             }
-            else
-            {
-                _log.LogInformation("Address created successfully for user {Email}", userDTO.Email);
-            }
 
+            await transaction.CommitAsync(cancellationToken);
+
+            _log.LogInformation("User and address successfully created for {Email}", userDTO.Email);
             return new ApiResponse<bool>(true, "User created successfully from AuthService");
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync(cancellationToken);
             _log.LogError(
                 ex,
                 "Error occurred while creating user from AuthService {Email}",
@@ -126,15 +155,44 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
         }
     }
 
-    private async Task<bool> UserExists(Guid userId, string email)
+    /// <summary>
+    /// Validar que existan Country y State en la base de datos
+    /// </summary>
+    private async Task<bool> ValidateCountryAndState(
+        int countryId,
+        int stateId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            return await _context.User.AnyAsync(u => u.Id == userId || u.Email == email);
+            var countryExists = await _context
+                .Set<Country>()
+                .AnyAsync(c => c.Id == countryId, cancellationToken);
+            if (!countryExists)
+            {
+                _log.LogWarning("Country with ID {CountryId} does not exist", countryId);
+                return false;
+            }
+
+            var stateExists = await _context
+                .Set<State>()
+                .AnyAsync(s => s.Id == stateId && s.CountryId == countryId, cancellationToken);
+            if (!stateExists)
+            {
+                _log.LogWarning(
+                    "State with ID {StateId} does not exist for Country {CountryId}",
+                    stateId,
+                    countryId
+                );
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Error checking if user exists");
+            _log.LogError(ex, "Error validating Country and State");
             return false;
         }
     }
@@ -159,7 +217,10 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
         };
     }
 
-    private async Task<ApiResponse<bool>> CreateDefaultAddress(
+    /// <summary>
+    /// Crear dirección usando los datos del AuthService
+    /// </summary>
+    private async Task<ApiResponse<bool>> CreateAddressFromAuthService(
         UserAutoCreateDTO userDTO,
         CancellationToken cancellationToken
     )
@@ -172,22 +233,29 @@ public class UserAutoCreateService : IUserAutoCreateService, ISaveServices
                 UserId = userDTO.Id,
                 CountryId = userDTO.CountryId,
                 StateId = userDTO.StateId,
-                City = userDTO.City,
-                Street = userDTO.Street,
-                Line = userDTO.Line,
-                ZipCode = userDTO.ZipCode,
+                City = userDTO.City?.Trim() ?? "Miami", // Fallback por si viene vacío
+                Street = userDTO.Street?.Trim() ?? "Main Street", // Fallback
+                Line = userDTO.Line?.Trim(), // Puede ser null
+                ZipCode = userDTO.ZipCode?.Trim() ?? "33101", // Fallback
             };
 
             _log.LogDebug(
-                "Creating address with values: {AddressDTO}",
-                System.Text.Json.JsonSerializer.Serialize(addressDTO)
+                "Creating address from AuthService data: Country={CountryId}, State={StateId}, City={City}, Street={Street}",
+                addressDTO.CountryId,
+                addressDTO.StateId,
+                addressDTO.City,
+                addressDTO.Street
             );
 
             return await _addressLib.AddNew(addressDTO, cancellationToken);
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Error creating default address for user {Email}", userDTO.Email);
+            _log.LogError(
+                ex,
+                "Error creating address from AuthService data for user {Email}",
+                userDTO.Email
+            );
             return new ApiResponse<bool>(false, $"Error creating address: {ex.Message}");
         }
     }

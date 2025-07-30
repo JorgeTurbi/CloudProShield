@@ -1,5 +1,17 @@
 namespace RabbitMQ.Contracts.Events;
 
+public sealed record AddressPayload
+{
+    public int CountryId { get; init; }
+    public string CountryName { get; init; } = default!;
+    public int StateId { get; init; }
+    public string StateName { get; init; } = default!;
+    public string? City { get; init; }
+    public string? Street { get; init; }
+    public string? Line { get; init; }
+    public string? ZipCode { get; init; }
+}
+
 public sealed record AccountRegisteredEvent
 {
     public Guid Id { get; init; }
@@ -14,4 +26,7 @@ public sealed record AccountRegisteredEvent
     public string? FullName { get; set; }
     public string? CompanyName { get; init; }
     public string? Domain { get; init; }
+    public string? Brand { get; init; }
+    public AddressPayload? CompanyAddress { get; init; }
+    public AddressPayload? UserAddress { get; init; }
 }

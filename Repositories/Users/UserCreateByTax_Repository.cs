@@ -28,43 +28,87 @@ public class UserCreateByTax_Repository : IUserCreateByTaxPro
     {
         try
         {
+            // Validaciones
+            if (string.IsNullOrWhiteSpace(e.Email))
+            {
+                _log.LogError("Invalid email in AccountRegisteredEvent: {Email}", e.Email);
+                return;
+            }
+
+            if (e.UserId == Guid.Empty)
+            {
+                _log.LogError("Invalid UserId in AccountRegisteredEvent: {UserId}", e.UserId);
+                return;
+            }
+
             // Generar contraseña temporal
             var plainPwd = CryptoHelper.Generate();
+
+            // Determinar qué dirección usar (preferir la del usuario, sino la de la compañía)
+            var addressToUse = e.UserAddress ?? e.CompanyAddress;
 
             // Preparar DTO con datos del AuthService
             var dto = new UserAutoCreateDTO
             {
                 Id = e.UserId, // IMPORTANTE: Usar el mismo GUID
-                Name = !e.IsCompany ? e.Name : (e.FullName ?? e.CompanyName ?? "Company"),
-                SurName = !e.IsCompany ? e.LastName : (e.CompanyName ?? string.Empty),
-                Dob = !e.IsCompany ? null : DateTime.UtcNow.AddYears(-1), // Para companies, fecha ficticia
+                Name = DetermineName(e),
+                SurName = DetermineSurName(e),
+                Dob = e.IsCompany ? DateTime.UtcNow.AddYears(-1) : DateTime.UtcNow.AddYears(-25),
                 Email = e.Email,
                 PlainPassword = plainPwd, // Será hasheada en el servicio
-                Phone = e.Phone ?? "",
+                Phone = e.Phone ?? string.Empty,
                 IsCompany = e.IsCompany,
                 CompanyName = e.CompanyName,
                 FullName = e.FullName,
                 Domain = e.Domain,
-                CountryId = 220, // Valores por defecto
-                StateId = 1,
-                City = "Alabama",
-                Street = "420 Fourth Ave",
-                Line = "Apt 1",
-                ZipCode = "11582",
-                Plan = "basic",
+                CountryId = addressToUse?.CountryId ?? 220, // USA por defecto
+                StateId = addressToUse?.StateId ?? 9, // Florida por defecto
+                City = addressToUse?.City ?? "Miami",
+                Street = addressToUse?.Street ?? "Main Street",
+                Line = addressToUse?.Line,
+                ZipCode = addressToUse?.ZipCode ?? "33101",
+                Plan = DeterminePlan(e.IsCompany),
             };
+
+            // Log detallado para debugging
+            _log.LogInformation(
+                "Creating user from AuthService - Email: {Email}, IsCompany: {IsCompany}, Address: {Country}/{State}/{City}",
+                dto.Email,
+                dto.IsCompany,
+                dto.CountryId,
+                dto.StateId,
+                dto.City
+            );
 
             // Crear usuario usando el nuevo servicio
             var result = await _userAutoCreate.CreateFromAuthServiceAsync(dto, ct);
 
             if (!result.Success)
             {
+                _log.LogWarning(
+                    "User creation result: {Success} - {Message} for {Email}",
+                    result.Success,
+                    result.Message,
+                    e.Email
+                );
+
+                // CRÍTICO: Solo enviar email si el usuario NO existía y se creó exitosamente
+                // Si result.Success = false y Message = "User already exists", NO enviar email
+                if (result.Message?.Contains("already exists") == true)
+                {
+                    _log.LogInformation(
+                        "User {Email} already exists in CloudShield. No email sent.",
+                        e.Email
+                    );
+                    return; // EXIT - No enviar email
+                }
+
                 _log.LogError(
                     "Failed to create user from AuthService for {Email}: {Message}",
                     e.Email,
                     result.Message
                 );
-                return;
+                return; // EXIT - Error real
             }
 
             // Enviar correo con credenciales temporales
@@ -81,5 +125,47 @@ public class UserCreateByTax_Repository : IUserCreateByTaxPro
         {
             _log.LogError(ex, "Error provisioning account from AuthService for {Email}", e.Email);
         }
+    }
+
+    /// <summary>
+    /// Determina el nombre según el tipo de cuenta
+    /// </summary>
+    private static string DetermineName(AccountRegisteredEvent e)
+    {
+        if (e.IsCompany)
+        {
+            // Para empresas: usar CompanyName, o FullName como fallback
+            return e.CompanyName ?? e.FullName ?? "Company";
+        }
+        else
+        {
+            // Para individuales: usar Name del administrador
+            return e.Name ?? "User";
+        }
+    }
+
+    /// <summary>
+    /// Determina el apellido según el tipo de cuenta
+    /// </summary>
+    private static string DetermineSurName(AccountRegisteredEvent e)
+    {
+        if (e.IsCompany)
+        {
+            // Para empresas: usar string vacío o un sufijo
+            return "LLC"; // O string.Empty si prefieres
+        }
+        else
+        {
+            // Para individuales: usar LastName del administrador
+            return e.LastName ?? string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Determina el plan según el tipo de cuenta
+    /// </summary>
+    private static string DeterminePlan(bool isCompany)
+    {
+        return isCompany ? "pro" : "basic";
     }
 }

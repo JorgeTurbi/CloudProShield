@@ -17,9 +17,9 @@ public class UserAutoCreateDTO
     // Dirección predeterminada - valores válidos para República Dominicana
     public int CountryId { get; set; } = 220; // República Dominicana
     public int StateId { get; set; } = 1; // Estado por defecto
-    public string City { get; set; } = "Santo Domingo"; // Ciudad por defecto
-    public string Street { get; set; } = "Calle Principal"; // Calle por defecto
-    public string Line { get; set; } = "N/A"; // Línea por defecto
-    public string ZipCode { get; set; } = "10100"; // Código postal válido de Santo Domingo
-    public string Plan { get; set; } = "basic";
+    public string? City { get; set; }
+    public string? Street { get; set; }
+    public string? Line { get; set; }
+    public string? ZipCode { get; set; }
+    public string? Plan { get; set; }
 }
