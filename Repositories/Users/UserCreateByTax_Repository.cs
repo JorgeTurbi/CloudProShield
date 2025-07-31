@@ -44,8 +44,30 @@ public class UserCreateByTax_Repository : IUserCreateByTaxPro
             // Generar contraseña temporal
             var plainPwd = CryptoHelper.Generate();
 
-            // Determinar qué dirección usar (preferir la del usuario, sino la de la compañía)
-            var addressToUse = e.UserAddress ?? e.CompanyAddress;
+            // Determinar qué dirección usar
+            var addressToUse = DetermineAddress(e);
+
+            // Validar que tenemos dirección válida
+            if (addressToUse == null)
+            {
+                _log.LogError(
+                    "No valid address found for {Email} - CompanyAddress: {HasCompany}, UserAddress: {HasUser}, IsCompany: {IsCompany}",
+                    e.Email,
+                    e.CompanyAddress != null,
+                    e.UserAddress != null,
+                    e.IsCompany
+                );
+                return;
+            }
+
+            _log.LogInformation(
+                "Using address for {Email}: Country={Country}, State={State}, City={City}, Street={Street}",
+                e.Email,
+                addressToUse.CountryId,
+                addressToUse.StateId,
+                addressToUse.City ?? "NULL",
+                addressToUse.Street ?? "NULL"
+            );
 
             // Preparar DTO con datos del AuthService
             var dto = new UserAutoCreateDTO
@@ -61,12 +83,12 @@ public class UserCreateByTax_Repository : IUserCreateByTaxPro
                 CompanyName = e.CompanyName,
                 FullName = e.FullName,
                 Domain = e.Domain,
-                CountryId = addressToUse?.CountryId ?? 220, // USA por defecto
-                StateId = addressToUse?.StateId ?? 9, // Florida por defecto
-                City = addressToUse?.City ?? "Miami",
-                Street = addressToUse?.Street ?? "Main Street",
-                Line = addressToUse?.Line,
-                ZipCode = addressToUse?.ZipCode ?? "33101",
+                CountryId = addressToUse.CountryId,
+                StateId = addressToUse.StateId,
+                City = GetValidValue(addressToUse.City, "Miami"),
+                Street = GetValidValue(addressToUse.Street, "Main Street"),
+                Line = addressToUse.Line,
+                ZipCode = GetValidValue(addressToUse.ZipCode, "33101"),
                 Plan = DeterminePlan(e.IsCompany),
             };
 
@@ -167,5 +189,31 @@ public class UserCreateByTax_Repository : IUserCreateByTaxPro
     private static string DeterminePlan(bool isCompany)
     {
         return isCompany ? "pro" : "basic";
+    }
+
+    /// <summary>
+    /// Determina qué dirección usar basándose en el tipo de cuenta
+    /// </summary>
+    private static AddressPayload? DetermineAddress(AccountRegisteredEvent e)
+    {
+        if (e.IsCompany)
+        {
+            // Para empresas: preferir UserAddress (del admin), fallback a CompanyAddress
+            return e.UserAddress ?? e.CompanyAddress;
+        }
+        else
+        {
+            // Para individuales: preferir UserAddress, fallback a CompanyAddress
+            // En individuales ambas deberían ser la misma dirección
+            return e.UserAddress ?? e.CompanyAddress;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene un valor válido o usa el fallback si es null/empty
+    /// </summary>
+    private static string GetValidValue(string? value, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
 }

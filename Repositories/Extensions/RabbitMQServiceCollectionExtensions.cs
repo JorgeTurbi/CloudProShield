@@ -22,61 +22,15 @@ public static class RabbitMQServiceCollectionExtensions
             // Registrar health service
             services.AddSingleton<IRabbitMQHealthService, RabbitMQHealthService>();
 
-            // Registrar implementaciones de EventBus
-            services.AddSingleton<EventBusRabbitMq>();
-            services.AddSingleton<NoOpEventBus>();
-
             // Registrar handlers para eventos
             services.AddScoped<CustomerCreatedEventHandler>();
             services.AddScoped<AccountRegisteredEventHandler>();
             services.AddScoped<SecureDocumentAccessRequestedEventHandler>();
             services.AddScoped<DocumentReadyToSealEventHandler>();
 
-            // Factory inteligente para determinar qué EventBus usar
-            services.AddSingleton<IEventBus>(serviceProvider =>
-            {
-                var healthService = serviceProvider.GetRequiredService<IRabbitMQHealthService>();
-                var logger = serviceProvider.GetRequiredService<ILogger<IEventBus>>();
-
-                // Health check inicial NO BLOQUEANTE con timeout más corto
-                var initialHealthTask = Task.Run(async () =>
-                {
-                    try
-                    {
-                        return await healthService.CheckHealthAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogDebug(ex, "Error en health check inicial de RabbitMQ");
-                        return false;
-                    }
-                });
-
-                // CRÍTICO: Reducir timeout a 1 segundo para startup más rápido
-                var isHealthy =
-                    initialHealthTask.Wait(TimeSpan.FromSeconds(1)) && initialHealthTask.Result;
-
-                if (isHealthy)
-                {
-                    logger.LogInformation("✅ RabbitMQ disponible - usando EventBusRabbitMq");
-                    return serviceProvider.GetRequiredService<EventBusRabbitMq>();
-                }
-                else
-                {
-                    logger.LogWarning("⚠️ RabbitMQ no disponible al inicio - usando NoOpEventBus");
-                    logger.LogInformation(
-                        "🔄 Se reintentará conexión automáticamente en segundo plano"
-                    );
-
-                    // Programar verificación en segundo plano para posible upgrade a RabbitMQ
-                    _ = Task.Run(async () =>
-                    {
-                        await MonitorRabbitMQAvailability(healthService, logger);
-                    });
-
-                    return serviceProvider.GetRequiredService<NoOpEventBus>();
-                }
-            });
+            // CAMBIO CRÍTICO: SIEMPRE usar EventBusRabbitMq
+            // El EventBusRabbitMq ahora maneja la reconexión automática y diferida
+            services.AddSingleton<IEventBus, EventBusRabbitMq>();
 
             Console.WriteLine("✅ RabbitMQ configurado con reconexión automática");
         }
@@ -92,7 +46,6 @@ public static class RabbitMQServiceCollectionExtensions
     public static WebApplication ConfigureRabbitMQSubscriptions(this WebApplication app)
     {
         // CRÍTICO: Configurar suscripciones INMEDIATAMENTE AL INICIAR
-        // Esto debe ejecutarse ANTES de que cualquier mensaje llegue
         try
         {
             var bus = app.Services.GetRequiredService<IEventBus>();
@@ -103,6 +56,7 @@ public static class RabbitMQServiceCollectionExtensions
                 logger.LogInformation("🔧 Configurando suscripciones RabbitMQ INMEDIATAMENTE...");
 
                 // CRÍTICO: Configurar todas las suscripciones SIN DELAY
+                // Estas suscripciones se almacenan y se crearán los consumidores cuando RabbitMQ esté disponible
                 bus.Subscribe<
                     RabbitMQ.Contracts.Events.CustomerCreatedEvent,
                     CustomerCreatedEventHandler
@@ -120,13 +74,27 @@ public static class RabbitMQServiceCollectionExtensions
                     DocumentReadyToSealEventHandler
                 >("DocumentReadyToSealEvent");
 
-                logger.LogInformation("✅ Suscripciones RabbitMQ configuradas INMEDIATAMENTE");
+                logger.LogInformation(
+                    "✅ Suscripciones RabbitMQ configuradas - se activarán cuando RabbitMQ esté disponible"
+                );
 
-                // SOLO después de suscribirse, verificar el procesamiento
+                // Verificación de estado en segundo plano
                 _ = Task.Run(async () =>
                 {
-                    await Task.Delay(1000);
-                    logger.LogInformation("🔄 Verificando procesamiento de mensajes en cola...");
+                    await Task.Delay(2000); // Dar tiempo para que se complete la conexión
+
+                    if (rabbitmqBus.IsConnected)
+                    {
+                        logger.LogInformation(
+                            "🎯 RabbitMQ conectado - consumidores activos y procesando mensajes"
+                        );
+                    }
+                    else
+                    {
+                        logger.LogInformation(
+                            "⏳ RabbitMQ no conectado aún - se reconectará automáticamente"
+                        );
+                    }
                 });
             }
             else if (bus is NoOpEventBus)
@@ -142,36 +110,5 @@ public static class RabbitMQServiceCollectionExtensions
         }
 
         return app;
-    }
-
-    private static async Task MonitorRabbitMQAvailability(
-        IRabbitMQHealthService healthService,
-        ILogger logger
-    )
-    {
-        var checkInterval = TimeSpan.FromSeconds(30);
-        var isHealthy = false;
-
-        while (!isHealthy)
-        {
-            try
-            {
-                await Task.Delay(checkInterval);
-                isHealthy = await healthService.CheckHealthAsync();
-
-                if (isHealthy)
-                {
-                    logger.LogInformation(
-                        "🎉 RabbitMQ ahora disponible! Para funcionalidad completa de messaging, considere reiniciar la aplicación"
-                    );
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogDebug(ex, "Error monitoreando disponibilidad de RabbitMQ");
-                // Continuar reintentando
-            }
-        }
     }
 }

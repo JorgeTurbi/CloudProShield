@@ -14,8 +14,8 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
     private bool _isChecking = false;
     private bool _disposed = false;
 
-    // Cache del health check por 30 segundos (más frecuente que antes)
-    private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
+    // CAMBIO: Cache más frecuente para detectar reconexiones rápidamente
+    private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(10); // Reducido de 30 a 10 segundos
 
     public RabbitMQHealthService(
         IConfiguration configuration,
@@ -25,12 +25,12 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
         _configuration = configuration;
         _logger = logger;
 
-        // Timer para health checks automáticos cada 15 segundos
+        // CAMBIO: Timer más frecuente para health checks automáticos
         _reconnectionTimer = new Timer(
             AutoHealthCheck,
             null,
             TimeSpan.Zero,
-            TimeSpan.FromSeconds(15)
+            TimeSpan.FromSeconds(5) // Reducido de 15 a 5 segundos
         );
     }
 
@@ -49,7 +49,7 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
     {
         lock (_lockObject)
         {
-            // Cache del health check
+            // Cache del health check más frecuente
             if (DateTime.UtcNow - _lastCheckTime < _checkInterval)
             {
                 return _isHealthy;
@@ -70,18 +70,34 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
 
             lock (_lockObject)
             {
+                var wasHealthy = _isHealthy;
                 _isHealthy = result;
                 _lastCheckTime = DateTime.UtcNow;
                 _isChecking = false;
-            }
 
-            if (result)
-            {
-                _logger.LogDebug("✅ RabbitMQ health check exitoso");
-            }
-            else
-            {
-                _logger.LogDebug("❌ RabbitMQ health check falló");
+                // NUEVO: Log solo cambios de estado
+                if (wasHealthy != result)
+                {
+                    if (result)
+                    {
+                        _logger.LogInformation(
+                            "✅ RabbitMQ health check exitoso - estado cambió a saludable"
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "❌ RabbitMQ health check falló - estado cambió a no saludable"
+                        );
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "🔍 RabbitMQ health check - estado sin cambios: {IsHealthy}",
+                        result
+                    );
+                }
             }
 
             return result;
@@ -113,8 +129,9 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
                 Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
                 UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
                 Password = _configuration["RabbitMQ:Password"] ?? "guest",
-                RequestedConnectionTimeout = TimeSpan.FromSeconds(3), // Timeout más corto
+                RequestedConnectionTimeout = TimeSpan.FromSeconds(2), // Timeout más corto
                 RequestedHeartbeat = TimeSpan.FromSeconds(10),
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(5), // Recuperación más rápida
             };
 
             // Usar using para asegurar limpieza de recursos
@@ -162,7 +179,7 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
                 var wasHealthy = IsHealthy;
                 var isNowHealthy = await CheckHealthAsync();
 
-                // Log solo cambios de estado
+                // CRÍTICO: Disparar evento solo en cambios de estado
                 if (wasHealthy != isNowHealthy)
                 {
                     if (isNowHealthy)
@@ -188,6 +205,18 @@ public sealed class RabbitMQHealthService : IRabbitMQHealthService, IDisposable
     /// Evento que se dispara cuando cambia el estado de salud de RabbitMQ
     /// </summary>
     public event Action<bool>? OnHealthStatusChanged;
+
+    // NUEVO: Método para forzar un health check inmediato (útil para debug)
+    public async Task<bool> ForceHealthCheckAsync()
+    {
+        lock (_lockObject)
+        {
+            _lastCheckTime = DateTime.MinValue; // Resetear cache
+            _isChecking = false;
+        }
+
+        return await CheckHealthAsync();
+    }
 
     public void Dispose()
     {

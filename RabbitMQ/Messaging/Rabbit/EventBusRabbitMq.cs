@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -19,6 +18,10 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
         string,
         List<Func<ReadOnlyMemory<byte>, Task>>
     > _subscriptions = new();
+
+    // NUEVO: Cache de definiciones de suscripción para recrearlas después
+    private readonly ConcurrentDictionary<string, SubscriptionDefinition> _subscriptionDefinitions =
+        new();
 
     private IConnection? _connection;
     private IModel? _channel;
@@ -120,7 +123,7 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
                 _configuration["RabbitMQ:Port"]
             );
 
-            // Reestablecer suscripciones existentes
+            // CRÍTICO: Reestablecer suscripciones existentes Y crear consumidores
             await ReestablishSubscriptionsAsync();
 
             return true;
@@ -158,7 +161,16 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
 
         _logger.LogWarning("⚠️ RabbitMQ connection shutdown: {Reason}", args.ReplyText);
 
-        // El health service manejará la reconexión automática
+        // Limpiar conexión inmediatamente
+        CleanupConnection();
+
+        // CRÍTICO: Iniciar proceso de reconexión inmediato
+        _logger.LogInformation("🔄 Iniciando proceso de reconexión automática...");
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(1000); // Esperar un poco antes de reintentar
+            await TryReconnectWithRetries();
+        });
     }
 
     private void OnConnectionBlocked(
@@ -221,12 +233,22 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
             return;
         }
 
-        // 🐛 DEBUG: Logging para troubleshooting
         _logger.LogInformation(
             "🐛 DEBUG: Registrando suscripción - RoutingKey: '{RoutingKey}', EventType: '{EventType}', HandlerType: '{HandlerType}'",
             routingKey,
             typeof(TEvent).Name,
             typeof(THandler).Name
+        );
+
+        // NUEVO: Guardar definición de suscripción para poder recrearla
+        _subscriptionDefinitions.TryAdd(
+            routingKey,
+            new SubscriptionDefinition
+            {
+                EventType = typeof(TEvent),
+                HandlerType = typeof(THandler),
+                RoutingKey = routingKey,
+            }
         );
 
         // CRÍTICO: Siempre registrar la suscripción primero
@@ -239,7 +261,6 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
         {
             try
             {
-                // 🐛 DEBUG: Logging para troubleshooting
                 var jsonString = System.Text.Encoding.UTF8.GetString(body.Span);
                 _logger.LogInformation(
                     "🐛 DEBUG: Procesando evento {RoutingKey}, JSON: {Json}",
@@ -280,8 +301,8 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
             }
         });
 
-        // CAMBIO CRÍTICO: Siempre intentar crear el consumidor, incluso si no hay conexión
-        if (handlers.Count == 1) // Solo crear consumidor si es la primera suscripción
+        // CRÍTICO: Solo crear consumidor si es la primera suscripción para este routingKey
+        if (handlers.Count == 1)
         {
             if (IsConnected)
             {
@@ -290,28 +311,9 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
             else
             {
                 _logger.LogInformation(
-                    "📋 RabbitMQ no conectado - suscripción {RoutingKey} registrada para cuando se conecte",
+                    "📋 RabbitMQ no conectado - suscripción {RoutingKey} registrada para crear cuando se conecte",
                     routingKey
                 );
-
-                // CRÍTICO: Reintento activo para crear consumidor
-                _ = Task.Run(async () =>
-                {
-                    while (!_disposed && !IsConnected)
-                    {
-                        await Task.Delay(3000); // Verificar cada 3 segundos
-
-                        if (IsConnected)
-                        {
-                            await CreateConsumerAsync(routingKey);
-                            _logger.LogInformation(
-                                "✅ Consumidor creado para {RoutingKey} después de reconexión",
-                                routingKey
-                            );
-                            break;
-                        }
-                    }
-                });
             }
         }
 
@@ -341,7 +343,6 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
 
         try
         {
-            // CRÍTICO: Usar el mismo formato que antes para mantener compatibilidad
             var queueName = $"{routingKey}.Queue";
 
             _logger.LogInformation(
@@ -410,7 +411,6 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
                 }
             };
 
-            // CRÍTICO: Configurar BasicConsume
             var consumerTag = _channel.BasicConsume(
                 queue: queueName,
                 autoAck: false,
@@ -435,34 +435,97 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
         }
     }
 
+    // CRÍTICO: Método mejorado para reestablecer suscripciones
     private async Task ReestablishSubscriptionsAsync()
     {
         if (_disposed || !IsConnected)
             return;
 
+        var subscriptionsCount = _subscriptions.Count;
+        var definitionsCount = _subscriptionDefinitions.Count;
+
         _logger.LogInformation(
-            "🔄 Reestableciendo {Count} suscripciones después de reconexión...",
-            _subscriptions.Count
+            "🔄 Reestableciendo suscripciones después de reconexión - Handlers: {HandlersCount}, Definiciones: {DefinitionsCount}",
+            subscriptionsCount,
+            definitionsCount
         );
 
+        // NUEVO: Crear consumidores para todas las suscripciones que tienen handlers
         foreach (var routingKey in _subscriptions.Keys)
         {
-            try
+            if (_subscriptions.TryGetValue(routingKey, out var handlers) && handlers.Count > 0)
             {
-                await CreateConsumerAsync(routingKey);
-                _logger.LogInformation("✅ Consumidor reestablecido para {RoutingKey}", routingKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "❌ Error reestableciendo suscripción {RoutingKey}",
-                    routingKey
-                );
+                try
+                {
+                    await CreateConsumerAsync(routingKey);
+                    _logger.LogInformation(
+                        "✅ Consumidor reestablecido para {RoutingKey}",
+                        routingKey
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "❌ Error reestableciendo suscripción {RoutingKey}",
+                        routingKey
+                    );
+                }
             }
         }
 
         _logger.LogInformation("✅ Suscripciones reestablecidas - procesando mensajes en cola...");
+    }
+
+    private async Task TryReconnectWithRetries()
+    {
+        if (_disposed)
+            return;
+
+        var maxRetries = 20; // Intentar por 20 veces
+        var retryDelay = TimeSpan.FromSeconds(3);
+        var attempt = 0;
+
+        while (!_disposed && !IsConnected && attempt < maxRetries)
+        {
+            attempt++;
+            try
+            {
+                _logger.LogInformation(
+                    "🔄 Intento de reconexión {Attempt}/{MaxRetries}...",
+                    attempt,
+                    maxRetries
+                );
+
+                var connected = await TryConnectAsync();
+                if (connected)
+                {
+                    _logger.LogInformation("✅ Reconexión exitosa en intento {Attempt}", attempt);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "❌ Error en intento de reconexión {Attempt}", attempt);
+            }
+
+            if (!_disposed && attempt < maxRetries)
+            {
+                _logger.LogDebug(
+                    "⏳ Esperando {Delay} segundos antes del siguiente intento...",
+                    retryDelay.TotalSeconds
+                );
+                await Task.Delay(retryDelay);
+            }
+        }
+
+        if (!IsConnected && !_disposed)
+        {
+            _logger.LogWarning(
+                "❌ No se pudo reconectar después de {MaxRetries} intentos",
+                maxRetries
+            );
+        }
     }
 
     private void CleanupConnection()
@@ -503,5 +566,13 @@ public sealed class EventBusRabbitMq : IEventBus, IDisposable
         }
 
         CleanupConnection();
+    }
+
+    // NUEVO: Clase helper para guardar definiciones de suscripción
+    private sealed class SubscriptionDefinition
+    {
+        public Type EventType { get; set; } = null!;
+        public Type HandlerType { get; set; } = null!;
+        public string RoutingKey { get; set; } = null!;
     }
 }
