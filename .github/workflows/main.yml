@@ -1,4 +1,4 @@
-name: CI/CD – CloudProShield (Docker on Ubuntu Server)
+name: CI/CD – CloudProSUITE (Docker on Ubuntu Server)
 
 on:
   push:
@@ -27,8 +27,14 @@ jobs:
         id: set_short_sha
         run: echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
+      # ✅ CORREGIDO: Usar find en lugar de globbing
       - name: List .csproj (verificación rápida)
-        run: ls -la **/*.csproj
+        run: |
+          echo "=== Buscando archivos .csproj ==="
+          find . -name "*.csproj" -type f -exec ls -la {} \;
+          echo "=== Verificando CloudShield.csproj ==="
+          ls -la CloudShield.csproj || echo "CloudShield.csproj no encontrado en raíz"
+
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
@@ -50,24 +56,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ CORREGIDO: Eliminada tag duplicada
       - name: Build & Push (GHCR)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
+          push: true
           tags: |
             ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ steps.set_short_sha.outputs.sha_short }}
             ${{ env.IMAGE_NAME }}:${{ steps.set_short_sha.outputs.sha_short }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
           provenance: false
+
       - name: Output info
         run: |
           echo "Repo:   $REPO_URL"
           echo "Image:  $IMAGE_NAME:latest"
           echo "Image:  $IMAGE_NAME:${{ steps.set_short_sha.outputs.sha_short }}"
-          echo "Image:  $IMAGE_NAME:${{ steps.set_short_sha.outputs.sha_short }}"
+
+      - name: Build & Push Migrator (GHCR)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.migrator
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}-migrator:latest
+            ${{ env.IMAGE_NAME }}-migrator:${{ steps.set_short_sha.outputs.sha_short }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}-migrator:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}-migrator:buildcache,mode=max
+          provenance: false
 
   deploy:
     name: Deploy on Ubuntu (Docker Compose)
@@ -102,3 +122,17 @@ jobs:
         run: |
           docker compose ps
           docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+      # ✅ AGREGADO: Health check opcional
+      - name: Wait for service to be healthy
+        run: |
+          echo "Esperando que el servicio esté saludable..."
+          for i in {1..30}; do
+            if docker compose ps | grep -q "healthy"; then
+              echo "✅ Servicio saludable"
+              break
+            fi
+            echo "Intento $i/30 - Esperando..."
+            sleep 10
+          done
+          docker compose ps
