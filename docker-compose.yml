@@ -1,7 +1,12 @@
+name: cloudproshield
+
+networks:
+  appnet:
+    driver: bridge
 
 services:
   cloudproshield:
-    image: ghcr.io/jorgeturbi/cloudproshield:latest
+    image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield:${TAG:-latest}"
     container_name: cloudproshield
     restart: unless-stopped
 
@@ -21,14 +26,17 @@ services:
       retries: 3
       start_period: 20s
 
+    networks:
+      - appnet
+
   cloudproshield-migrator:
-    image: ${REGISTRY_PREFIX}-cloudproshield-migrator:${TAG} 
+    image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield-migrator:${TAG:-latest}"
+    # Si tu migrador es "one-shot":
+    restart: "no"
     environment:
       DB_SERVER: 10.128.3.20
       DB_USER: sa
       DB_PASSWORD: "Brittany040238."
-    networks: [bridge]
-
-networks:
-  default:
-    driver: bridge
+    # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # si aplica
+    networks:
+      - appnet

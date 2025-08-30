@@ -139,8 +139,11 @@ jobs:
             echo "ℹ️ No existe $ENV_ABS; no se pasará --env-file"
           fi
 
-          echo "REGISTRY_PREFIX=${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
-          echo "TAG=${TAG:-latest}"
+          # Defaults seguros por si no hay .env
+          export REGISTRY_PREFIX="${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
+          export TAG="${TAG:-latest}"
+          echo "REGISTRY_PREFIX=$REGISTRY_PREFIX"
+          echo "TAG=$TAG"
 
           echo "🔄 docker compose pull"
           docker compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" pull
