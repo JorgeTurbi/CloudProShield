@@ -4,11 +4,11 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
-COPY ["ClOUDSHIELD/CloudShield.csproj", "CloudShield/"]
+COPY ["/CloudShield.csproj", "CloudShield/"]
 # COPY ["SharedLibrary/SharedLibrary.csproj", "SharedLibrary/"]
-RUN dotnet restore "ClOUDSHIELD/CloudShield.csproj"
+RUN dotnet restore "/CloudShield.csproj"
 COPY . .
-WORKDIR "/src/CloudShield"
+WORKDIR "/CloudShield"
 RUN dotnet build "CloudShield.csproj" -c Release -o /app/build
 
 FROM build AS publish
