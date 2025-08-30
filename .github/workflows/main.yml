@@ -111,17 +111,15 @@ jobs:
           if [ -f "${{ env.ENV_PATH }}" ]; then
             echo "✅ Se encontró ${{ env.ENV_PATH }}"
           else
-            echo "ℹ️ No .env file (continuando sin .env)"
+            echo "ℹ️ No .env file (continuando con defaults del compose)"
           fi
 
       # 3) Login a GHCR en el servidor self-hosted
-      #    En runners self-hosted, a veces GITHUB_TOKEN no basta para paquetes privados.
-      #    Recomendado: crear un PAT con 'read:packages' y guardarlo como GHCR_TOKEN.
       - name: Login to GHCR (server)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          # Read GHCR token from secrets; prefer GHCR_TOKEN if set, otherwise use GITHUB_TOKEN
           TOKEN="$GHCR_TOKEN"
           if [ -z "$TOKEN" ]; then
             echo "⚠️ GHCR_TOKEN no definido; intentando con GITHUB_TOKEN"
@@ -142,11 +140,14 @@ jobs:
             set +a
           fi
 
+          echo "REGISTRY_PREFIX=${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
+          echo "TAG=${TAG:-latest}"
+
           echo "🔄 docker compose pull"
-          docker compose -f "${{ env.COMPOSE_PATH }}" pull
+          docker compose -f "${{ env.COMPOSE_PATH }}" --env-file "${{ env.ENV_PATH }}" pull
 
           echo "🚀 docker compose up"
-          docker compose -f "${{ env.COMPOSE_PATH }}" up -d --remove-orphans
+          docker compose -f "${{ env.COMPOSE_PATH }}" --env-file "${{ env.ENV_PATH }}" up -d --remove-orphans
 
           echo "📋 docker compose ps"
           docker compose -f "${{ env.COMPOSE_PATH }}" ps
