@@ -122,27 +122,31 @@ jobs:
 
       - name: Deploy with Docker Compose
         working-directory: infra
+        shell: bash
         run: |
           set -e
-          # Cargar variables al shell si .env existe
-          if [ -f "${{ env.ENV_PATH }}" ]; then
-            echo "🔧 Cargando variables de ${{ env.ENV_PATH }}"
+          # Ruta absoluta del .env
+          ENV_ABS="$(pwd)/${{ env.ENV_PATH }}"
+          # Construye el argumento --env-file como array solo si existe
+          ENV_ARGS=()
+          if [[ -s "$ENV_ABS" ]]; then
+            echo "🔧 Cargando variables de $ENV_ABS"
             set -a
-            . "${{ env.ENV_PATH }}"
+            . "$ENV_ABS"
             set +a
-            ENVFILE_ARG="--env-file ${{ env.ENV_PATH }}"
+            ENV_ARGS=(--env-file "$ENV_ABS")
           else
-            ENVFILE_ARG=""
+            echo "ℹ️ No existe $ENV_ABS; no se pasará --env-file"
           fi
 
           echo "REGISTRY_PREFIX=${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
           echo "TAG=${TAG:-latest}"
 
           echo "🔄 docker compose pull"
-          docker compose -f "${{ env.COMPOSE_PATH }}" $ENVFILE_ARG pull
+          docker compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" pull
 
           echo "🚀 docker compose up"
-          docker compose -f "${{ env.COMPOSE_PATH }}" $ENVFILE_ARG up -d --remove-orphans
+          docker compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" up -d --remove-orphans
 
           echo "📋 docker compose ps"
           docker compose -f "${{ env.COMPOSE_PATH }}" ps
