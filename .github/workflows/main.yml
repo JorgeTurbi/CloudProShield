@@ -6,9 +6,13 @@ on:
       - main
 
 env:
-  # Usando GHCR (GitHub Container Registry)
+  # Imagen en GHCR (ajústalo si cambia tu namespace)
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
-  REPO_URL: "https://github.com/JorgeTurbi/CloudProShield"
+  REPO_URL: https://github.com/JorgeTurbi/CloudProShield
+  # Ruta al docker-compose en el repo de infraestructura (CloudProShield)
+  COMPOSE_PATH: docker-compose.yml
+  # (Opcional) ruta del .env dentro del repo de infraestructura
+  ENV_PATH: .env
 
 jobs:
   build-and-push:
@@ -17,22 +21,15 @@ jobs:
 
     permissions:
       contents: read
-      packages: write   # necesario para publicar en GHCR
+      packages: write
 
     steps:
-      - name: Checkout
+      - name: Checkout (app repo)
         uses: actions/checkout@v4
 
       - name: Set short SHA
         id: set_short_sha
-        run: echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
-      - name: List .csproj (verificación rápida)
-        run: |
-          echo "=== Buscando archivos .csproj ==="
-          find . -name "*.csproj" -type f -exec ls -la {} \;
-          echo "=== Verificando CloudShield.csproj ==="
-          ls -la CloudShield.csproj || echo "CloudShield.csproj no encontrado en raíz"
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
@@ -48,7 +45,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ✅ Login a GHCR (usa GITHUB_TOKEN automático)
+      # Login a GHCR con GITHUB_TOKEN (suficiente en GitHub-hosted runners)
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -56,7 +53,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push (GHCR)
+      - name: Build & Push (App)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,7 +64,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ steps.set_short_sha.outputs.sha_short }}
           provenance: false
 
-      - name: Build & Push Migrator (GHCR)
+      - name: Build & Push (Migrator)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -95,20 +92,67 @@ jobs:
       packages: read
 
     steps:
-      # Descargar solo los archivos necesarios (evita problemas de permisos)
-      - name: Download deployment files
+      # 1) Trae el repo de infraestructura donde está el docker-compose
+      - name: Checkout infra repo (CloudProShield)
+        uses: actions/checkout@v4
+        with:
+          repository: JorgeTurbi/CloudProShield
+          ref: main
+          path: infra
+
+      # 2) Verifica archivos requeridos (evita el 404 por curl)
+      - name: Verify required files
         run: |
-          echo "📥 Descargando archivos de deployment..."
-          curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/JorgeTurbi/CloudProShield/main/docker-compose.yml
-          curl -fsSL -o .env https://raw.githubusercontent.com/JorgeTurbi/CloudProShield/main/.env 2>/dev/null || echo "No .env file"
+          set -e
+          cd infra
+          echo "📂 Contenido de infra:"
           ls -la
+          test -f "${{ env.COMPOSE_PATH }}" || { echo "❌ No existe ${{ env.COMPOSE_PATH }} en el repo CloudProShield"; exit 1; }
+          if [ -f "${{ env.ENV_PATH }}" ]; then
+            echo "✅ Se encontró ${{ env.ENV_PATH }}"
+          else
+            echo "ℹ️ No .env file (continuando sin .env)"
+          fi
 
-      - name: Login to GHCR (on server)
+      # 3) Login a GHCR en el servidor self-hosted
+      #    En runners self-hosted, a veces GITHUB_TOKEN no basta para paquetes privados.
+      #    Recomendado: crear un PAT con 'read:packages' y guardarlo como GHCR_TOKEN.
+      - name: Login to GHCR (server)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          # Read GHCR token from secrets; prefer GHCR_TOKEN if set, otherwise use GITHUB_TOKEN
+          TOKEN="$GHCR_TOKEN"
+          if [ -z "$TOKEN" ]; then
+            echo "⚠️ GHCR_TOKEN no definido; intentando con GITHUB_TOKEN"
+            TOKEN="$GITHUB_TOKEN"
+          fi
+          echo "$TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      # 4) Despliegue con Docker Compose
       - name: Deploy with Docker Compose
+        working-directory: infra
         run: |
-          docker compose pull
-          docker compose up -d --remove-orphans
-          docker compose ps
+          set -e
+          # Exporta variables para docker compose (si .env existe en la raíz de infra)
+          if [ -f "${{ env.ENV_PATH }}" ]; then
+            echo "🔧 Cargando variables de ${{ env.ENV_PATH }}"
+            set -a
+            . "${{ env.ENV_PATH }}"
+            set +a
+          fi
+
+          echo "🔄 docker compose pull"
+          docker compose -f "${{ env.COMPOSE_PATH }}" pull
+
+          echo "🚀 docker compose up"
+          docker compose -f "${{ env.COMPOSE_PATH }}" up -d --remove-orphans
+
+          echo "📋 docker compose ps"
+          docker compose -f "${{ env.COMPOSE_PATH }}" ps
+
+      # 5) Info extra del host (útil para troubleshooting)
+      - name: Docker info (host)
+        run: |
+          docker info || true
+          docker ps || true
