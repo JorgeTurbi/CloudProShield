@@ -37,13 +37,17 @@ public class FilesControllerUser : ControllerBase
     {
         // Validate file
         if (file == null || file.Length == 0)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return BadRequest(new ApiResponse<object>(false, "File is empty or null", null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         // Get user ID from token
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return Unauthorized(
                 new ApiResponse<object>(false, "Invalid or missing user ID in token", null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         try
         {
@@ -62,14 +66,18 @@ public class FilesControllerUser : ControllerBase
                 );
             }
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return BadRequest(new ApiResponse<object>(false, pathOrReason, null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         catch (Exception ex)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return StatusCode(
                 500,
-                new ApiResponse<object>(false, "Internal server error during file upload", null)
+                new ApiResponse<object>(false, ex.Message.ToString(), null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 
@@ -87,12 +95,16 @@ public class FilesControllerUser : ControllerBase
     {
         // Get user ID from token
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return Unauthorized(
                 new ApiResponse<object>(false, "Invalid or missing user ID in token", null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         if (string.IsNullOrWhiteSpace(relativePath))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return BadRequest(new ApiResponse<object>(false, "File path is required", null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         try
         {
@@ -113,14 +125,19 @@ public class FilesControllerUser : ControllerBase
                 return File(stream!, contentType ?? MediaTypeNames.Application.Octet, fileName);
             }
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return NotFound(new ApiResponse<object>(false, reason, null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         catch (Exception ex)
         {
+
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return StatusCode(
                 500,
-                new ApiResponse<object>(false, "Internal server error during file download", null)
+                new ApiResponse<object>(false, ex.Message.ToString(), null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 
@@ -136,12 +153,16 @@ public class FilesControllerUser : ControllerBase
     {
         // Get user ID from token
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return Unauthorized(
                 new ApiResponse<object>(false, "Invalid or missing user ID in token", null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         if (string.IsNullOrWhiteSpace(relativePath))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return BadRequest(new ApiResponse<object>(false, "File path is required", null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         try
         {
@@ -153,7 +174,9 @@ public class FilesControllerUser : ControllerBase
             // Find file metadata first
             var metadata = await _storage.FindMetaAsyncUser(userId, decodedPath, ct);
             if (metadata == null)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return NotFound(new ApiResponse<object>(false, "File not found", null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
             // Delete the file
             var (success, reason) = await _storage.DeleteFileAsync(
@@ -166,14 +189,18 @@ public class FilesControllerUser : ControllerBase
             if (success)
                 return NoContent();
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return BadRequest(new ApiResponse<object>(false, reason, null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         catch (Exception ex)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return StatusCode(
                 500,
-                new ApiResponse<object>(false, "Internal server error during file deletion", null)
+                new ApiResponse<object>(false, ex.Message.ToString(), null)
             );
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 }
