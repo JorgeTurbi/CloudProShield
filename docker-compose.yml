@@ -1,9 +1,5 @@
 name: cloudproshield
 
-networks:
-  appnet:
-    driver: bridge
-
 services:
   cloudproshield:
     image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield:${TAG:-latest}"
@@ -14,6 +10,7 @@ services:
     ports:
       - "80:8080"
 
+    # Variables de la app (puedes moverlas a .env si prefieres)
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       # Si no defines PORT en .env, usará 8080
@@ -26,17 +23,21 @@ services:
       retries: 3
       start_period: 20s
 
-    networks:
-      - bridge
+    networks: [bridge]
 
   cloudproshield-migrator:
     image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield-migrator:${TAG:-latest}"
-    # Si tu migrador es "one-shot":
+    # Si es un job one-shot de migraciones:
     restart: "no"
     environment:
       DB_SERVER: 10.128.3.20
       DB_USER: sa
       DB_PASSWORD: "Brittany040238."
-    # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # si aplica
-    networks:
-      - bridge
+    # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # <- descomenta si aplica
+    networks: [bridge]
+
+# ✅ Declarar la red bridge del host como externa (evita "undefined network bridge")
+networks:
+  bridge:
+    external: true
+    name: bridge
