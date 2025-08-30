@@ -1,10 +1,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS migrator
 
 WORKDIR /src
+
+# Primero copiar solo el archivo de proyecto para cachear las dependencias
+COPY ["CloudShield.csproj", "./"]
+
+# Restaurar dependencias
+RUN dotnet restore "CloudShield.csproj"
+
+# Copiar el resto del código
 COPY . .
 
+# Instalar EF Core tools
 RUN dotnet tool install --global dotnet-ef --version 9.0.0
 ENV PATH="${PATH}:/root/.dotnet/tools"
 
-WORKDIR /src/cloudshield
+# Permanecer en /src donde está el proyecto
+# No cambiar a /src/cloudshield ya que no existe
 ENTRYPOINT ["dotnet", "ef", "database", "update"]
