@@ -27,7 +27,7 @@ services:
       start_period: 20s
 
     networks:
-      - appnet
+      - bridge
 
   cloudproshield-migrator:
     image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield-migrator:${TAG:-latest}"
@@ -39,4 +39,4 @@ services:
       DB_PASSWORD: "Brittany040238."
     # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # si aplica
     networks:
-      - appnet
+      - bridge
