@@ -6,12 +6,9 @@ on:
       - main
 
 env:
-  # Imagen en GHCR (ajústalo si cambia tu namespace)
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
   REPO_URL: https://github.com/JorgeTurbi/CloudProShield
-  # Ruta al docker-compose en el repo de infraestructura (CloudProShield)
   COMPOSE_PATH: docker-compose.yml
-  # (Opcional) ruta del .env dentro del repo de infraestructura
   ENV_PATH: .env
 
 jobs:
@@ -45,7 +42,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Login a GHCR con GITHUB_TOKEN (suficiente en GitHub-hosted runners)
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -92,7 +88,6 @@ jobs:
       packages: read
 
     steps:
-      # 1) Trae el repo de infraestructura donde está el docker-compose
       - name: Checkout infra repo (CloudProShield)
         uses: actions/checkout@v4
         with:
@@ -100,7 +95,6 @@ jobs:
           ref: main
           path: infra
 
-      # 2) Verifica archivos requeridos (evita el 404 por curl)
       - name: Verify required files
         run: |
           set -e
@@ -114,7 +108,6 @@ jobs:
             echo "ℹ️ No .env file (continuando con defaults del compose)"
           fi
 
-      # 3) Login a GHCR en el servidor self-hosted
       - name: Login to GHCR (server)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,32 +120,33 @@ jobs:
           fi
           echo "$TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      # 4) Despliegue con Docker Compose
       - name: Deploy with Docker Compose
         working-directory: infra
         run: |
           set -e
-          # Exporta variables para docker compose (si .env existe en la raíz de infra)
+          # Cargar variables al shell si .env existe
           if [ -f "${{ env.ENV_PATH }}" ]; then
             echo "🔧 Cargando variables de ${{ env.ENV_PATH }}"
             set -a
             . "${{ env.ENV_PATH }}"
             set +a
+            ENVFILE_ARG="--env-file ${{ env.ENV_PATH }}"
+          else
+            ENVFILE_ARG=""
           fi
 
           echo "REGISTRY_PREFIX=${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
           echo "TAG=${TAG:-latest}"
 
           echo "🔄 docker compose pull"
-          docker compose -f "${{ env.COMPOSE_PATH }}" --env-file "${{ env.ENV_PATH }}" pull
+          docker compose -f "${{ env.COMPOSE_PATH }}" $ENVFILE_ARG pull
 
           echo "🚀 docker compose up"
-          docker compose -f "${{ env.COMPOSE_PATH }}" --env-file "${{ env.ENV_PATH }}" up -d --remove-orphans
+          docker compose -f "${{ env.COMPOSE_PATH }}" $ENVFILE_ARG up -d --remove-orphans
 
           echo "📋 docker compose ps"
           docker compose -f "${{ env.COMPOSE_PATH }}" ps
 
-      # 5) Info extra del host (útil para troubleshooting)
       - name: Docker info (host)
         run: |
           docker info || true
