@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CloudShield.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250615033801_InitialMigrations")]
-    partial class InitialMigrations
+    [Migration("20250831033949_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1999,7 +1999,7 @@ namespace CloudShield.Migrations
                             Name = "Admin",
                             Otp = "",
                             OtpExpires = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Password = "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd",
+                            Password = "WJd8pmbNUhSKz3M0V/KT2mTO0KlCiGkTPOLdARs0WIfOKfZjObvThYTnW/WmPnXc",
                             Phone = "8294627091",
                             ResetPasswordExpires = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             ResetPasswordToken = "",

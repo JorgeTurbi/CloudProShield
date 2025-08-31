@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CloudShield.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigrations : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -545,7 +545,7 @@ namespace CloudShield.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "Confirm", "ConfirmToken", "CreateAt", "Dob", "Email", "IsActive", "Name", "Otp", "OtpExpires", "Password", "Phone", "ResetPasswordExpires", "ResetPasswordToken", "SurName", "UpdateAt" },
-                values: new object[] { new Guid("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7"), true, "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "jturbi@syschar.com", true, "Admin", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "tyf/2baqRCXa00UpI2vvzoPLQVVqz4mDGbOrh3TT884ksq1zz1OxnDqg2ovromUd", "8294627091", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) });
+                values: new object[] { new Guid("d3f9d6c9-b4f5-4e5b-a6f1-cab3fbe287a7"), true, "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "jturbi@syschar.com", true, "Admin", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "WJd8pmbNUhSKz3M0V/KT2mTO0KlCiGkTPOLdARs0WIfOKfZjObvThYTnW/WmPnXc", "8294627091", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) });
 
             migrationBuilder.InsertData(
                 table: "SpacesClouds",

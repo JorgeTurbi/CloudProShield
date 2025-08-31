@@ -1,25 +1,31 @@
 services:
-  migrator:
-    build:
-      context: .
-      dockerfile: Dockerfile.migrator
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
-      EF_MIGRATIONS_PROJECT: ${EF_MIGRATIONS_PROJECT:-CloudShield.csproj}
-      EF_STARTUP_PROJECT: ${EF_STARTUP_PROJECT:-CloudShield.csproj}
-    restart: "no"
+  # migrator:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.migrator
+  #   environment:
+  # environment:
+  #     RUNNING_IN_DOCKER: "true"
+  #     ASPNETCORE_ENVIRONMENT: Production
+  #     ASPNETCORE_URLS: http://0.0.0.0:80
+  #     ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+  #     EF_MIGRATIONS_PROJECT: ${EF_MIGRATIONS_PROJECT:-CloudShield.csproj}
+  #     EF_STARTUP_PROJECT: ${EF_STARTUP_PROJECT:-CloudShield.csproj}
+  #   restart: "no"
 
   cloudshield:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+     environment:
+      RUNNING_IN_DOCKER: "true"
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:80
       ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
     ports:
       - "${API_PORT:-8080}:80"
-    depends_on:
-      migrator:
-        condition: service_completed_successfully
+    # depends_on:
+    #   migrator:
+    #     condition: service_completed_successfully
     restart: unless-stopped

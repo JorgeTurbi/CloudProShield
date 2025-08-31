@@ -156,7 +156,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(); // <- tu DbContext concreto
+    db.Database.Migrate(); // aplica migraciones pendientes
+}
 // ✅ PIPELINE DE MIDDLEWARES
 app.UseSwagger();
 app.UseSwaggerUI(o =>
