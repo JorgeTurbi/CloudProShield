@@ -59,7 +59,10 @@ builder.Services.AddCors(options =>
         "AllowAllOrigins",
         builder =>
         {
-            builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+            builder.WithOrigins("https://cloud.taxprosuite.com/",
+             "https://go.taxprosuite.com/",
+              "https://taxprosuite.com")
+            .AllowAnyMethod().AllowAnyHeader();
         }
     );
 });
