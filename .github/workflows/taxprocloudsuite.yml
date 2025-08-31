@@ -6,15 +6,15 @@ on:
 
 permissions:
   contents: read
-  packages: write  # publicar imagen en GHCR
+  packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/CloudProShield
+  IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
   DOCKER_COMPOSE_FILE: docker-compose.yml
 
 jobs:
   build-push-deploy:
-    runs-on: self-hosted  # tu runner ubuntu5
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,7 +46,6 @@ jobs:
           docker push "$IMAGE_NAME:${{ steps.meta.outputs.SHORT_SHA }}"
           docker push "$IMAGE_NAME:latest"
 
-      # Genera .env desde el secret APP_ENV_FILE si existe
       - name: Materialize .env from secret (APP_ENV_FILE)
         shell: bash
         env:
