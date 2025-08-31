@@ -9,7 +9,7 @@ permissions:
   packages: write  # publicar imagen en GHCR
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cloudproshield
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/CloudProshield
   DOCKER_COMPOSE_FILE: docker-compose.yml
 
 jobs:
