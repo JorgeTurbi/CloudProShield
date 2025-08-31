@@ -4,7 +4,7 @@ services:
     container_name: cloudshield
     restart: unless-stopped
     ports:
-      - "80:8080"
+      - "80:80"
     # Cargamos variables desde .env generado por el workflow
     env_file:
       - .env
