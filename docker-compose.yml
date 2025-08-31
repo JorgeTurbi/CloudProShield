@@ -1,20 +1,19 @@
 services:
+  migrator:
+    image: ghcr.io/jorgeturbi/cloudproshield:latest
+    depends_on:
+      - cloudshield
+    command: ["dotnet", "CloudShield.dll", "--migrate-only"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=false;TrustServerCertificate=true;
+    restart: "no"
+
   cloudshield:
     image: ghcr.io/jorgeturbi/cloudproshield:latest
-    container_name: cloudshield
-    restart: unless-stopped
+    environment:
+      - RUN_DB_MIGRATIONS=false
+      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ConnectionStrings__DefaultConnection=Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=false;TrustServerCertificate=true;
     ports:
       - "80:80"
-    # Cargamos variables desde .env generado por el workflow
-    env_file:
-      - .env
-    # Si necesitas variables adicionales, usa uno de estos formatos válidos:
-    # environment:
-    #   ASPNETCORE_URLS: http://0.0.0.0:8080
-    #   CUSTOM_FLAG: "true"
-    #   TIMEOUT_SECS: "30"
-    # --- o lista ---
-    # environment:
-    #   - ASPNETCORE_URLS=http://0.0.0.0:8080
-    #   - CUSTOM_FLAG=true
-    #   - TIMEOUT_SECS=30
+    restart: unless-stopped

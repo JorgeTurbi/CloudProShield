@@ -11,6 +11,9 @@ permissions:
 env:
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
   DOCKER_COMPOSE_FILE: docker-compose.yml
+  HEALTHCHECK_URL: http://127.0.0.1/
+  HEALTHCHECK_RETRIES: "3"   # 3 intentos
+  HEALTHCHECK_DELAY: "3"      # 3s entre intentos
 
 jobs:
   build-push-deploy:
@@ -52,7 +55,7 @@ jobs:
         env:
           APP_ENV_FILE: ${{ secrets.APP_ENV_FILE }}
         run: |
-          set -e
+          set -euo pipefail
           if [ -n "${APP_ENV_FILE:-}" ]; then
             printf '%s\n' "$APP_ENV_FILE" > .env
             echo ".env generado desde secret APP_ENV_FILE"
@@ -60,17 +63,57 @@ jobs:
             {
               echo "# fallback .env generado automáticamente"
               echo "ASPNETCORE_ENVIRONMENT=Production"
-              # Añade aquí valores mínimos que tu app soporte sin romperse
-              # Por ejemplo:
-              # echo "ConnectionStrings__DefaultConnection=Server=172.17.0.1,1433;Database=CloudShield;User Id=sa;Password=***;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true"
+              # Añade aquí valores mínimos si tu app los requiere.
+              # p.ej. ConnectionStrings__DefaultConnection=...
             } > .env
             echo "APP_ENV_FILE no definido; .env mínimo creado para que compose no falle"
           fi
-          # Verificación sin exponer secretos
+
+          # Forzamos que la API NO migre en startup (evita caerse si BD no está lista)
+          if ! grep -q '^RUN_DB_MIGRATIONS=' .env 2>/dev/null; then
+            echo "RUN_DB_MIGRATIONS=false" >> .env
+          else
+            sed -i 's/^RUN_DB_MIGRATIONS=.*/RUN_DB_MIGRATIONS=false/' .env
+          fi
+
+          # Asegurar que Kestrel escuche en 0.0.0.0:80 dentro del contenedor
+          if ! grep -q '^ASPNETCORE_URLS=' .env 2>/dev/null; then
+            echo "ASPNETCORE_URLS=http://0.0.0.0:80" >> .env
+          fi
+
+          # (Opcional) endurecer TLS de SQL si no usas certificados:
+          # if ! grep -q '^ConnectionStrings__DefaultConnection=' .env 2>/dev/null; then
+          #   echo "ConnectionStrings__DefaultConnection=Server=TU_SQL_HOST,1433;Database=CloudShield;User Id=USUARIO;Password=CLAVE;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true" >> .env
+          # fi
+
           test -f .env && echo ".env presente (size: $(wc -c < .env) bytes)"
 
       - name: Deploy with Docker Compose
         run: |
+          # Asegúrate de que tu docker-compose usa la imagen $IMAGE_NAME:latest
           docker compose -f "$DOCKER_COMPOSE_FILE" pull
           docker compose -f "$DOCKER_COMPOSE_FILE" up -d --remove-orphans
           docker image prune -f
+
+      - name: Health check (espera a que responda HTTP 200/301/302)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 "${HEALTHCHECK_RETRIES}"); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "${HEALTHCHECK_URL}" || true)
+            if [[ "$code" == "200" || "$code" == "301" || "$code" == "302" ]]; then
+              echo "Healthcheck OK (HTTP $code) en intento $i"
+              ok=1
+              break
+            fi
+            echo "Aún no listo (HTTP ${code:-ERR}), reintento $i/${HEALTHCHECK_RETRIES}..."
+            sleep "${HEALTHCHECK_DELAY}"
+          done
+
+          if [ "$ok" -ne 1 ]; then
+            echo "Healthcheck FAILED. Últimos logs de containers:"
+            docker compose -f "$DOCKER_COMPOSE_FILE" ps
+            docker compose -f "$DOCKER_COMPOSE_FILE" logs --no-color --since=15m || true
+            exit 1
+          fi
