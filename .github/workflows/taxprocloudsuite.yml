@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  packages: write  # publicar imagen en GHCR
 
 env:
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
@@ -46,17 +46,28 @@ jobs:
           docker push "$IMAGE_NAME:${{ steps.meta.outputs.SHORT_SHA }}"
           docker push "$IMAGE_NAME:latest"
 
-      - name: Materialize .env from secret (APP_ENV_FILE)
+      # Generar SIEMPRE un .env local (si no hay secret, crea uno mínimo)
+      - name: Materialize .env (from APP_ENV_FILE or defaults)
         shell: bash
         env:
           APP_ENV_FILE: ${{ secrets.APP_ENV_FILE }}
         run: |
+          set -e
           if [ -n "${APP_ENV_FILE:-}" ]; then
             printf '%s\n' "$APP_ENV_FILE" > .env
-            echo ".env generado"
+            echo ".env generado desde secret APP_ENV_FILE"
           else
-            echo "APP_ENV_FILE no definido; omitiendo creación de .env"
+            {
+              echo "# fallback .env generado automáticamente"
+              echo "ASPNETCORE_ENVIRONMENT=Production"
+              # Añade aquí valores mínimos que tu app soporte sin romperse
+              # Por ejemplo:
+              # echo "ConnectionStrings__DefaultConnection=Server=172.17.0.1,1433;Database=CloudShield;User Id=sa;Password=***;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=true"
+            } > .env
+            echo "APP_ENV_FILE no definido; .env mínimo creado para que compose no falle"
           fi
+          # Verificación sin exponer secretos
+          test -f .env && echo ".env presente (size: $(wc -c < .env) bytes)"
 
       - name: Deploy with Docker Compose
         run: |
