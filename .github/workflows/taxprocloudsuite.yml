@@ -1,0 +1,66 @@
+name: Deploy on Ubuntu (Docker Compose)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write  # publicar imagen en GHCR
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cloudproshield
+  DOCKER_COMPOSE_FILE: docker-compose.yml
+
+jobs:
+  build-push-deploy:
+    runs-on: self-hosted  # tu runner ubuntu5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: meta
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR (con github.token)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: |
+          docker build \
+            -t "$IMAGE_NAME:${{ steps.meta.outputs.SHORT_SHA }}" \
+            -t "$IMAGE_NAME:latest" \
+            -f Dockerfile \
+            .
+
+      - name: Push image tags
+        run: |
+          docker push "$IMAGE_NAME:${{ steps.meta.outputs.SHORT_SHA }}"
+          docker push "$IMAGE_NAME:latest"
+
+      # Genera .env desde el secret APP_ENV_FILE si existe
+      - name: Materialize .env from secret (APP_ENV_FILE)
+        shell: bash
+        env:
+          APP_ENV_FILE: ${{ secrets.APP_ENV_FILE }}
+        run: |
+          if [ -n "${APP_ENV_FILE:-}" ]; then
+            printf '%s\n' "$APP_ENV_FILE" > .env
+            echo ".env generado"
+          else
+            echo "APP_ENV_FILE no definido; omitiendo creación de .env"
+          fi
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose -f "$DOCKER_COMPOSE_FILE" pull
+          docker compose -f "$DOCKER_COMPOSE_FILE" up -d --remove-orphans
+          docker image prune -f

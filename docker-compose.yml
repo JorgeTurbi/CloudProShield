@@ -1,42 +1,25 @@
-name: cloudproshield
-
 services:
-  cloudproshield:
-    image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield:${TAG:-latest}"
-    container_name: cloudproshield
-    restart: unless-stopped
-
-    # Host 80 -> Contenedor 8080
-    ports:
-      - "80:8080"
-
-    # Variables de la app (puedes moverlas a .env si prefieres)
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      # Si no defines PORT en .env, usará 8080
-      ASPNETCORE_URLS: "http://0.0.0.0:${PORT:-8080}"
-
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8080}/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-    networks: [bridge]
-
-  cloudproshield-migrator:
-    image: "${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}/cloudproshield-migrator:${TAG:-latest}"
-    # Si es un job one-shot de migraciones:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+      EF_MIGRATIONS_PROJECT: ${EF_MIGRATIONS_PROJECT:-CloudShield.csproj}
+      EF_STARTUP_PROJECT: ${EF_STARTUP_PROJECT:-CloudShield.csproj}
     restart: "no"
-    environment:
-      DB_SERVER: 10.128.3.20
-      DB_USER: sa
-      DB_PASSWORD: "Brittany040238."
-    # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # <- descomenta si aplica
-    networks: [bridge]
 
-# ────────────────────  redes  ─────────────────────────
-networks:
-  backend:
-    driver: bridge
+  cloudshield:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+    ports:
+      - "${API_PORT:-8080}:80"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped

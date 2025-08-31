@@ -1,20 +1,32 @@
+# Usa SDK porque el CLI de EF requiere el SDK
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS migrator
 
 WORKDIR /src
 
-# Primero copiar solo el archivo de proyecto para cachear las dependencias
+# 1) Copia primero el .csproj para cachear restore
 COPY ["CloudShield.csproj", "./"]
 
-# Restaurar dependencias
+# 2) Restaura dependencias
 RUN dotnet restore "CloudShield.csproj"
 
-# Copiar el resto del código
+# 3) Copia el resto del código
 COPY . .
 
-# Instalar EF Core tools
-RUN dotnet tool install --global dotnet-ef --version 9.0.0
-ENV PATH="${PATH}:/root/.dotnet/tools"
+# 4) (Opcional pero acelera) Compila una vez para evitar builds repetidos
+RUN dotnet build "CloudShield.csproj" -c Release
 
-# Permanecer en /src donde está el proyecto
-# No cambiar a /src/cloudshield ya que no existe
-ENTRYPOINT ["dotnet", "ef", "database", "update"]
+# 5) Instala EF Tools
+RUN dotnet tool install --global dotnet-ef --version 9.0.0
+ENV PATH="${PATH}:/root/.dotnet/tools" \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+
+# 6) Variables para apuntar al proyecto de migraciones / startup y DbContext
+#    - Si las migraciones están en el mismo proyecto WebApi, deja ambos en CloudShield.csproj
+ENV EF_MIGRATIONS_PROJECT="CloudShield.csproj" \
+    EF_STARTUP_PROJECT="CloudShield.csproj" \
+    EF_CONTEXT=""
+
+# 7) Ejecuta 'dotnet ef database update' con los parámetros configurables
+#    Nota: usamos 'sh -c' para que expanda variables
+ENTRYPOINT ["sh","-c","dotnet ef database update --project \"$EF_MIGRATIONS_PROJECT\" --startup-project \"$EF_STARTUP_PROJECT\" ${EF_CONTEXT:+-c $EF_CONTEXT}"]
