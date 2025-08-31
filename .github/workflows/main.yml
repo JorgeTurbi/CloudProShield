@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
@@ -19,6 +20,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    outputs:
+      sha_short: ${{ steps.set_short_sha.outputs.sha_short }}
 
     steps:
       - name: Checkout (app repo)
@@ -95,64 +99,83 @@ jobs:
           ref: main
           path: infra
 
-      - name: Verify required files
+      - name: Ensure Docker Compose v2
         run: |
-          set -e
-          cd infra
-          echo "📂 Contenido de infra:"
-          ls -la
-          test -f "${{ env.COMPOSE_PATH }}" || { echo "❌ No existe ${{ env.COMPOSE_PATH }} en el repo CloudProShield"; exit 1; }
-          if [ -f "${{ env.ENV_PATH }}" ]; then
-            echo "✅ Se encontró ${{ env.ENV_PATH }}"
-          else
-            echo "ℹ️ No .env file (continuando con defaults del compose)"
+          if ! docker compose version >/dev/null 2>&1; then
+            echo "🛑 Docker Compose v2 no está instalado. Instala docker-compose-plugin."
+            exit 1
           fi
+
+      - name: Debug runner user & docker
+        run: |
+          echo "whoami: $(whoami)"
+          id || true
+          docker info | head -n 20 || true
 
       - name: Login to GHCR (server)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          TOKEN="$GHCR_TOKEN"
-          if [ -z "$TOKEN" ]; then
-            echo "⚠️ GHCR_TOKEN no definido; intentando con GITHUB_TOKEN"
-            TOKEN="$GITHUB_TOKEN"
-          fi
+          set -e
+          TOKEN="${GHCR_TOKEN:-$GITHUB_TOKEN}"
           echo "$TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "✅ Login GHCR ok"
+
+      - name: Prepare env file for compose
+        working-directory: infra
+        run: |
+          # Usa el tag exacto recién construido (sha corto). Fallback a 'latest' si no llega del job anterior.
+          TAG_FROM_BUILD="${{ needs.build-and-push.outputs.sha_short }}"
+          TAG_VALUE="${TAG_FROM_BUILD:-latest}"
+          echo "REGISTRY_PREFIX=ghcr.io/jorgeturbi" > "${{ env.ENV_PATH }}"
+          echo "TAG=$TAG_VALUE" >> "${{ env.ENV_PATH }}"
+          echo "📄 .env generado:"
+          cat "${{ env.ENV_PATH }}"
 
       - name: Deploy with Docker Compose
         working-directory: infra
         shell: bash
         run: |
           set -e
-          # Ruta absoluta del .env
-          ENV_ABS="$(pwd)/${{ env.ENV_PATH }}"
-          # Construye el argumento --env-file como array solo si existe
-          ENV_ARGS=()
-          if [[ -s "$ENV_ABS" ]]; then
-            echo "🔧 Cargando variables de $ENV_ABS"
-            set -a
-            . "$ENV_ABS"
-            set +a
-            ENV_ARGS=(--env-file "$ENV_ABS")
+
+          # Usa docker o sudo docker según permisos del socket
+          if docker info >/dev/null 2>&1; then
+            DOCKER=docker
           else
-            echo "ℹ️ No existe $ENV_ABS; no se pasará --env-file"
+            echo "ℹ️ Sin permisos directos al socket; usando sudo docker"
+            DOCKER="sudo docker"
           fi
 
-          # Defaults seguros por si no hay .env
-          export REGISTRY_PREFIX="${REGISTRY_PREFIX:-ghcr.io/jorgeturbi}"
-          export TAG="${TAG:-latest}"
-          echo "REGISTRY_PREFIX=$REGISTRY_PREFIX"
-          echo "TAG=$TAG"
+          # Argumento --env-file si existe .env
+          ENV_ABS="$(pwd)/${{ env.ENV_PATH }}"
+          ENV_ARGS=()
+          if [[ -s "$ENV_ABS" ]]; then
+            ENV_ARGS=(--env-file "$ENV_ABS")
+          fi
 
-          echo "🔄 docker compose pull"
-          docker compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" pull
+          echo "🔻 Teardown previo (si lo hay)"
+          $DOCKER compose -f "${{ env.COMPOSE_PATH }}" down --volumes --remove-orphans || true
 
-          echo "🚀 docker compose up"
-          docker compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" up -d --remove-orphans
+          echo "🔄 Pull imágenes"
+          $DOCKER compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" pull
 
-          echo "📋 docker compose ps"
-          docker compose -f "${{ env.COMPOSE_PATH }}" ps
+          echo "🚀 Up servicios"
+          $DOCKER compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" up -d --remove-orphans
+          $DOCKER compose -f "${{ env.COMPOSE_PATH }}" ps
+
+          echo "🧰 Ejecutar migradores si existen"
+          SVCS=$($DOCKER compose -f "${{ env.COMPOSE_PATH }}" config --services | grep -E 'migrator$' || true)
+          if [[ -n "$SVCS" ]]; then
+            for s in $SVCS; do
+              echo "▶️ $s"
+              if ! $DOCKER compose -f "${{ env.COMPOSE_PATH }}" "${ENV_ARGS[@]}" run --rm "$s"; then
+                echo "⚠️ Migrator $s falló (continuando)"
+              fi
+            done
+          else
+            echo "ℹ️ No hay servicios migrator definidos."
+          fi
 
       - name: Docker info (host)
         run: |

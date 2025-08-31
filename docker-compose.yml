@@ -36,8 +36,7 @@ services:
     # command: ["dotnet", "CloudShield.Migrator.dll", "migrate"]  # <- descomenta si aplica
     networks: [bridge]
 
-# ✅ Declarar la red bridge del host como externa (evita "undefined network bridge")
+# ────────────────────  redes  ─────────────────────────
 networks:
-  bridge:
-    external: true
-    name: bridge
+  backend:
+    driver: bridge
