@@ -11,7 +11,7 @@ permissions:
 env:
   IMAGE_NAME: ghcr.io/jorgeturbi/cloudproshield
   DOCKER_COMPOSE_FILE: docker-compose.yml
-  HEALTHCHECK_URL: http://127.0.0.1/
+  HEALTHCHECK_URL: http://10.128.2.19/
   HEALTHCHECK_RETRIES: "3"   # 3 intentos
   HEALTHCHECK_DELAY: "3"      # 3s entre intentos
 
