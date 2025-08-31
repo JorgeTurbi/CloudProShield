@@ -1,31 +1,20 @@
 services:
-  # migrator:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.migrator
-  #   environment:
-  # environment:
-  #     RUNNING_IN_DOCKER: "true"
-  #     ASPNETCORE_ENVIRONMENT: Production
-  #     ASPNETCORE_URLS: http://0.0.0.0:80
-  #     ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
-  #     EF_MIGRATIONS_PROJECT: ${EF_MIGRATIONS_PROJECT:-CloudShield.csproj}
-  #     EF_STARTUP_PROJECT: ${EF_STARTUP_PROJECT:-CloudShield.csproj}
-  #   restart: "no"
-
   cloudshield:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-     environment:
-      RUNNING_IN_DOCKER: "true"
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_URLS: http://0.0.0.0:80
-      ConnectionStrings__DefaultConnection: "Server=10.128.3.20,1433;Database=CloudShield;User Id=sa;Password=Brittany040238.;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
-    ports:
-      - "${API_PORT:-8080}:80"
-    # depends_on:
-    #   migrator:
-    #     condition: service_completed_successfully
+    image: ghcr.io/jorgeturbi/cloudproshield:latest
+    container_name: cloudshield
     restart: unless-stopped
+    ports:
+      - "80:8080"
+    # Cargamos variables desde .env generado por el workflow
+    env_file:
+      - .env
+    # Si necesitas variables adicionales, usa uno de estos formatos válidos:
+    # environment:
+    #   ASPNETCORE_URLS: http://0.0.0.0:8080
+    #   CUSTOM_FLAG: "true"
+    #   TIMEOUT_SECS: "30"
+    # --- o lista ---
+    # environment:
+    #   - ASPNETCORE_URLS=http://0.0.0.0:8080
+    #   - CUSTOM_FLAG=true
+    #   - TIMEOUT_SECS=30
