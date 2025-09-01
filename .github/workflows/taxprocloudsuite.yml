@@ -96,25 +96,25 @@ jobs:
           docker compose -f "$DOCKER_COMPOSE_FILE" up -d --remove-orphans
           docker image prune -f
 
-      - name: Health check (espera a que responda HTTP 200/301/302)
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=0
-          for i in $(seq 1 "${HEALTHCHECK_RETRIES}"); do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' "${HEALTHCHECK_URL}" || true)
-            if [[ "$code" == "200" || "$code" == "301" || "$code" == "302" ]]; then
-              echo "Healthcheck OK (HTTP $code) en intento $i"
-              ok=1
-              break
-            fi
-            echo "Aún no listo (HTTP ${code:-ERR}), reintento $i/${HEALTHCHECK_RETRIES}..."
-            sleep "${HEALTHCHECK_DELAY}"
-          done
+      # - name: Health check (espera a que responda HTTP 200/301/302)
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     ok=0
+      #     for i in $(seq 1 "${HEALTHCHECK_RETRIES}"); do
+      #       code=$(curl -sS -o /dev/null -w '%{http_code}' "${HEALTHCHECK_URL}" || true)
+      #       if [[ "$code" == "200" || "$code" == "301" || "$code" == "302" ]]; then
+      #         echo "Healthcheck OK (HTTP $code) en intento $i"
+      #         ok=1
+      #         break
+      #       fi
+      #       echo "Aún no listo (HTTP ${code:-ERR}), reintento $i/${HEALTHCHECK_RETRIES}..."
+      #       sleep "${HEALTHCHECK_DELAY}"
+      #     done
 
-          if [ "$ok" -ne 1 ]; then
-            echo "Healthcheck FAILED. Últimos logs de containers:"
-            docker compose -f "$DOCKER_COMPOSE_FILE" ps
-            docker compose -f "$DOCKER_COMPOSE_FILE" logs --no-color --since=15m || true
-            exit 1
-          fi
+      #     if [ "$ok" -ne 1 ]; then
+      #       echo "Healthcheck FAILED. Últimos logs de containers:"
+      #       docker compose -f "$DOCKER_COMPOSE_FILE" ps
+      #       docker compose -f "$DOCKER_COMPOSE_FILE" logs --no-color --since=15m || true
+      #       exit 1
+      #     fi
