@@ -17,7 +17,7 @@ using RazorLight;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
-var cfg = builder.Configuration;
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 // ✅ CONFIGURACIÓN DE LOGGING
 builder.Logging.ClearProviders();
 
@@ -70,17 +70,27 @@ builder.WebHost.ConfigureKestrel(o =>
 });
 
 // ✅ CORS POLICY
-builder.Services.AddCors(options =>
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy(
+//         "AllowAllOrigins",
+//         builder =>
+//         {
+//             builder.WithOrigins("https://cloud.taxprosuite.com/",
+//              "https://go.taxprosuite.com/",
+//               "https://taxprosuite.com")
+//             .AllowAnyMethod().AllowAnyHeader();
+//         }
+//     );
+// });
+
+builder.Services.AddCors(opt =>
 {
-    options.AddPolicy(
-        "AllowAllOrigins",
-        builder =>
-        {
-            builder.WithOrigins("https://cloud.taxprosuite.com/",
-             "https://go.taxprosuite.com/",
-              "https://taxprosuite.com")
-            .AllowAnyMethod().AllowAnyHeader();
-        }
+    opt.AddPolicy("AllowSpecific", p => p
+        .WithOrigins(allowedOrigins)         // ¡dominios exactos, sin slash!
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()                  // si usas cookies o auth con credenciales
     );
 });
 
@@ -200,7 +210,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSerilogRequestLogging();
-app.UseCors("AllowAllOrigins");
+app.UseCors("AllowSpecific");  
 
 if (app.Environment.IsProduction())
 {
