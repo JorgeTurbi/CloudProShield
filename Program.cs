@@ -129,6 +129,7 @@ builder.Services.AddCustomRepostories();
 
 // RABBITMQ CON RECONEXIÓN AUTOMÁTICA (NO BLOQUEANTE)
 builder.Services.AddRabbitMQEventBus(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 
 // RAZOR LIGHT ENGINE
 builder.Services.AddSingleton(sp =>

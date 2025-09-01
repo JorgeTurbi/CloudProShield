@@ -9,64 +9,93 @@ using Services.TokenServices;
 
 namespace Session_Repository
 {
-  public class SessionCreate_Repository : ISessionCommandCreate
-  {
-    private readonly ApplicationDbContext _context;
-    private readonly IMapper _mapper;
-    private readonly ILogger<SessionCreate_Repository> _log;
-    private readonly ITokenService _token;
-
-    public SessionCreate_Repository(ApplicationDbContext context, IMapper mapper, ILogger<SessionCreate_Repository> log, ITokenService tokenService)
+    public class SessionCreate_Repository : ISessionCommandCreate
     {
-      _context = context;
-      _mapper = mapper;
-      _log = log;
-      _token = tokenService;
-    }
+        private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper;
+        private readonly ILogger<SessionCreate_Repository> _log;
+        private readonly ITokenService _token;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public async Task<ApiResponse<SessionDTO>> CreateSession(Guid userId, string ip, string device)
-    {
-      try
-      {
-        var user = await _context.User.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null)
-          return new ApiResponse<SessionDTO>(false, "User not found");
-
-        if (!user.IsActive)
-          return new ApiResponse<SessionDTO>(false, "User account is inactive.");
-
-        if (!user.Confirm)
-          return new ApiResponse<SessionDTO>(false, "User account has not been confirmed.");
-
-        var token = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(1));
-        var tokenRefresh = _token.IssueSessionResetToken(userId, user.Email, user.Name, TimeSpan.FromDays(7));
-
-        var session = new Sessions
+        public SessionCreate_Repository(
+            ApplicationDbContext context,
+            IMapper mapper,
+            ILogger<SessionCreate_Repository> log,
+            ITokenService tokenService,
+            IHttpContextAccessor httpContextAccessor
+        )
         {
-          UserId = userId,
-          User = user,
-          TokenRequest = token,
-          ExpireTokenRequest = DateTime.UtcNow.AddDays(1),
-          TokenRefresh = tokenRefresh,
-          ExpireTokenRefresh = DateTime.UtcNow.AddDays(3),
-          IpAddress = ip,
-          Location = "Unknown",
-          Device = device,
-          IsRevoke = false,
-          CreateAt = DateTime.UtcNow
-        };
+            _context = context;
+            _mapper = mapper;
+            _log = log;
+            _token = tokenService;
+            _httpContextAccessor = httpContextAccessor;
+        }
 
-        _context.Sessions.Add(session);
-        await _context.SaveChangesAsync();
+        public async Task<ApiResponse<SessionDTO>> CreateSession(
+            Guid userId,
+            string ip,
+            string device
+        )
+        {
+            try
+            {
+                var user = await _context.User.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user is null)
+                    return new ApiResponse<SessionDTO>(false, "User not found");
 
-        var dto = _mapper.Map<SessionDTO>(session);
-        return new ApiResponse<SessionDTO>(true, "Session created", dto);
-      }
-      catch (Exception ex)
-      {
-        _log.LogError(ex, "Error creating session");
-        return new ApiResponse<SessionDTO>(false, "Could not create session");
-      }
+                if (!user.IsActive)
+                    return new ApiResponse<SessionDTO>(false, "User account is inactive.");
+
+                if (!user.Confirm)
+                    return new ApiResponse<SessionDTO>(
+                        false,
+                        "User account has not been confirmed."
+                    );
+
+                var token = _token.IssueSessionResetToken(
+                    userId,
+                    user.Email,
+                    user.Name,
+                    TimeSpan.FromDays(1)
+                );
+                var tokenRefresh = _token.IssueSessionResetToken(
+                    userId,
+                    user.Email,
+                    user.Name,
+                    TimeSpan.FromDays(7)
+                );
+
+                var cfgCountry = _httpContextAccessor
+                    .HttpContext?.Request.Headers["CF-IPCountry"]
+                    .ToString();
+
+                var session = new Sessions
+                {
+                    UserId = userId,
+                    User = user,
+                    TokenRequest = token,
+                    ExpireTokenRequest = DateTime.UtcNow.AddDays(1),
+                    TokenRefresh = tokenRefresh,
+                    ExpireTokenRefresh = DateTime.UtcNow.AddDays(3),
+                    IpAddress = ip,
+                    Location = string.IsNullOrEmpty(cfgCountry) ? "Unknown" : cfgCountry,
+                    Device = device,
+                    IsRevoke = false,
+                    CreateAt = DateTime.UtcNow,
+                };
+
+                _context.Sessions.Add(session);
+                await _context.SaveChangesAsync();
+
+                var dto = _mapper.Map<SessionDTO>(session);
+                return new ApiResponse<SessionDTO>(true, "Session created", dto);
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Error creating session");
+                return new ApiResponse<SessionDTO>(false, "Could not create session");
+            }
+        }
     }
-  }
 }
