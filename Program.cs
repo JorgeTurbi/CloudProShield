@@ -18,8 +18,11 @@ using RazorLight;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var allowedOrigins =
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>();
 
-// CONFIGURACIÓN DE LOGGING
+// ✅ CONFIGURACIÓN DE LOGGING
 builder.Logging.ClearProviders();
 
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
@@ -39,6 +42,22 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog(Log.Logger, dispose: true);
 
+// var templatesRoot = builder.Configuration["Mail:TemplatesPath"]
+//     ?? Path.Combine(builder.Environment.ContentRootPath, "Mail", "Templates");
+
+//     builder.Services.AddSingleton(sp =>
+// {
+//     if (!Directory.Exists(templatesRoot))
+//         throw new DirectoryNotFoundException($"Mail templates folder not found: {templatesRoot}");
+
+//     var engine = new RazorLight.RazorLightEngineBuilder()
+//         .UseFileSystemProject(templatesRoot)
+//         .UseMemoryCachingProvider()
+//         .Build();
+
+//     return engine;
+// });
+
 Console.WriteLine("🚀 Iniciando CloudProShield API...");
 Console.WriteLine($"📁 Logs guardados en: {logFolderPath}");
 
@@ -53,22 +72,30 @@ builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = 5L * 1024 * 1024 * 1024; // 5 GB
 });
 
-// CORS POLICY
-builder.Services.AddCors(options =>
+// ✅ CORS POLICY
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy(
+//         "AllowAllOrigins",
+//         builder =>
+//         {
+//             builder.WithOrigins("https://cloud.taxprosuite.com/",
+//              "https://go.taxprosuite.com/",
+//               "https://taxprosuite.com")
+//             .AllowAnyMethod().AllowAnyHeader();
+//         }
+//     );
+// });
+
+builder.Services.AddCors(opt =>
 {
-    options.AddPolicy(
-        "AllowAllOrigins",
-        builder =>
-        {
-            builder
-                .WithOrigins(
-                    "https://cloud.taxprosuite.com/",
-                    "https://go.taxprosuite.com/",
-                    "https://taxprosuite.com"
-                )
+    opt.AddPolicy(
+        "AllowSpecific",
+        p =>
+            p.WithOrigins(allowedOrigins) // ¡dominios exactos, sin slash!
+                .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowAnyHeader();
-        }
+                .AllowCredentials() // si usas cookies o auth con credenciales
     );
 });
 
@@ -212,7 +239,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSerilogRequestLogging();
-app.UseCors("AllowAllOrigins");
+app.UseCors("AllowSpecific");
 
 if (app.Environment.IsProduction())
 {
