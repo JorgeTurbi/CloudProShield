@@ -17,7 +17,7 @@ using RazorLight;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
-
+var cfg = builder.Configuration;
 // ✅ CONFIGURACIÓN DE LOGGING
 builder.Logging.ClearProviders();
 
@@ -37,6 +37,23 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog(Log.Logger, dispose: true);
+
+
+// var templatesRoot = builder.Configuration["Mail:TemplatesPath"]
+//     ?? Path.Combine(builder.Environment.ContentRootPath, "Mail", "Templates");
+
+//     builder.Services.AddSingleton(sp =>
+// {
+//     if (!Directory.Exists(templatesRoot))
+//         throw new DirectoryNotFoundException($"Mail templates folder not found: {templatesRoot}");
+
+//     var engine = new RazorLight.RazorLightEngineBuilder()
+//         .UseFileSystemProject(templatesRoot)
+//         .UseMemoryCachingProvider()
+//         .Build();
+
+//     return engine;
+// });
 
 Console.WriteLine("🚀 Iniciando CloudProShield API...");
 Console.WriteLine($"📁 Logs guardados en: {logFolderPath}");
