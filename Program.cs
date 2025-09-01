@@ -6,6 +6,7 @@ using Commons.Utils;
 using DataContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -18,7 +19,7 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ CONFIGURACIÓN DE LOGGING
+// CONFIGURACIÓN DE LOGGING
 builder.Logging.ClearProviders();
 
 var logFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "LogsApplication");
@@ -41,7 +42,7 @@ builder.Host.UseSerilog(Log.Logger, dispose: true);
 Console.WriteLine("🚀 Iniciando CloudProShield API...");
 Console.WriteLine($"📁 Logs guardados en: {logFolderPath}");
 
-// ✅ CONFIGURACIÓN DE LÍMITES DE ARCHIVOS
+// CONFIGURACIÓN DE LÍMITES DE ARCHIVOS
 builder.Services.Configure<FormOptions>(o =>
 {
     o.MultipartBodyLengthLimit = 5L * 1024 * 1024 * 1024; // 5 GB
@@ -52,22 +53,26 @@ builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = 5L * 1024 * 1024 * 1024; // 5 GB
 });
 
-// ✅ CORS POLICY
+// CORS POLICY
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
         "AllowAllOrigins",
         builder =>
         {
-            builder.WithOrigins("https://cloud.taxprosuite.com/",
-             "https://go.taxprosuite.com/",
-              "https://taxprosuite.com")
-            .AllowAnyMethod().AllowAnyHeader();
+            builder
+                .WithOrigins(
+                    "https://cloud.taxprosuite.com/",
+                    "https://go.taxprosuite.com/",
+                    "https://taxprosuite.com"
+                )
+                .AllowAnyMethod()
+                .AllowAnyHeader();
         }
     );
 });
 
-// ✅ JWT AUTHENTICATION
+// JWT AUTHENTICATION
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
 builder
@@ -92,13 +97,13 @@ builder
 
 builder.Services.AddAuthorization();
 
-// ✅ SERVICIOS PERSONALIZADOS
+// SERVICIOS PERSONALIZADOS
 builder.Services.AddCustomRepostories();
 
-// ✅ RABBITMQ CON RECONEXIÓN AUTOMÁTICA (NO BLOQUEANTE)
+// RABBITMQ CON RECONEXIÓN AUTOMÁTICA (NO BLOQUEANTE)
 builder.Services.AddRabbitMQEventBus(builder.Configuration);
 
-// ✅ RAZOR LIGHT ENGINE
+// RAZOR LIGHT ENGINE
 builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
@@ -110,18 +115,38 @@ builder.Services.AddSingleton(sp =>
         .Build();
 });
 
-// ✅ CONTROLADORES Y AUTOMAPPER
+// CONTROLADORES Y AUTOMAPPER
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddAutoMapper(typeof(FileSystemProfile));
 
-// ✅ ENTITY FRAMEWORK
+// Forwarded Headers (Cloudflare + reverse proxy)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+        | ForwardedHeaders.XForwardedHost;
+
+    // ⚠️ Seguridad: o bien confías explícitamente en las redes de Cloudflare
+    // (carga los CIDRs oficiales a KnownNetworks/KnownProxies),
+    // o SIEMPRE que tu origen esté cerrado al público y SOLO accesible desde Cloudflare,
+    // limpias las listas para aceptar el proxy aguas arriba.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+
+    // Estas 2 ayudan cuando hay más de un proxy en la cadena.
+    options.RequireHeaderSymmetry = false;
+    options.ForwardLimit = null; // sin límite de saltos
+});
+
+// ENTITY FRAMEWORK
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// ✅ SWAGGER/OPENAPI
+// SWAGGER/OPENAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -159,12 +184,16 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(); // <- tu DbContext concreto
     db.Database.Migrate(); // aplica migraciones pendientes
 }
-// ✅ PIPELINE DE MIDDLEWARES
+
+app.UseForwardedHeaders();
+
+// PIPELINE DE MIDDLEWARES
 app.UseSwagger();
 app.UseSwaggerUI(o =>
 {
@@ -206,10 +235,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// ✅ CONFIGURAR SUSCRIPCIONES RABBITMQ (NO BLOQUEANTE)
+// CONFIGURAR SUSCRIPCIONES RABBITMQ (NO BLOQUEANTE)
 app.ConfigureRabbitMQSubscriptions();
 
-// ✅ HEALTH CHECK ENDPOINTS
+// HEALTH CHECK ENDPOINTS
 app.MapGet(
     "/health",
     (IServiceProvider services) =>
@@ -262,7 +291,7 @@ app.MapGet(
     }
 );
 
-// ✅ MENSAJES DE INICIO
+// MENSAJES DE INICIO
 Console.WriteLine("\n" + new string('=', 60));
 Console.WriteLine("🌟 CLOUDPROSHIELD API INICIADA EXITOSAMENTE");
 Console.WriteLine(new string('=', 60));
@@ -279,7 +308,7 @@ foreach (var url in urls)
 
 Console.WriteLine(new string('=', 60));
 
-// ✅ ABRIR SWAGGER EN DESARROLLO
+// ABRIR SWAGGER EN DESARROLLO
 if (app.Environment.IsDevelopment())
 {
     var url = urls.FirstOrDefault()?.Replace("*", "localhost") ?? "http://localhost:5009";
@@ -302,6 +331,6 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-Console.WriteLine("\n✅ Presiona Ctrl+C para detener el servidor\n");
+Console.WriteLine("\nPresiona Ctrl+C para detener el servidor\n");
 
 app.Run();

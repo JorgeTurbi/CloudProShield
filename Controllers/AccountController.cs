@@ -93,7 +93,7 @@ namespace CloudShield.Controllers
             if (userLoginDTO == null)
                 return BadRequest(new ApiResponse<string>(false, "Invalid login request"));
 
-            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+            string ipAddress = GetClientIp(HttpContext);
             string device = HttpContext.Request.Headers["User-Agent"].ToString() ?? string.Empty;
 
             ApiResponse<string> result = await _userRead.LoginUser(userLoginDTO, ipAddress, device);
@@ -147,6 +147,27 @@ namespace CloudShield.Controllers
             }
 
             return Ok(result);
+        }
+
+        // Helpers methods
+        private static string GetClientIp(HttpContext ctx)
+        {
+            // 1) Cloudflare (disponible en todos los planes)
+            if (
+                ctx.Request.Headers.TryGetValue("CF-Connecting-IP", out var cfip)
+                && !string.IsNullOrWhiteSpace(cfip)
+            )
+                return cfip.ToString();
+
+            // 2) X-Forwarded-For estándar (toma el primer hop)
+            if (
+                ctx.Request.Headers.TryGetValue("X-Forwarded-For", out var xff)
+                && !string.IsNullOrWhiteSpace(xff)
+            )
+                return xff.ToString().Split(',')[0].Trim();
+
+            // 3) Fallback: conexión directa
+            return ctx.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         }
     }
 }
