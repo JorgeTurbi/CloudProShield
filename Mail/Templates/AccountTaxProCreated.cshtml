@@ -1,31 +1,31 @@
 @model dynamic
 @{
-    ViewBag.Title = "Cuenta creada automáticamente";
+    ViewBag.Title = "Account automatically created";
     Layout = "Layout";
 }
 
-<h2>¡Tu cuenta en @Model.AppName está lista!</h2>
+<h2>Your @Model.AppName account is ready!</h2>
 
-<p>Hola,</p>
+<p>Hello,</p>
 <p>
-    Has sido registrado automáticamente en <strong>@Model.AppName</strong>.
-    A continuación encontrarás tu contraseña temporal:
+    You have been automatically registered in <strong>@Model.AppName</strong>.
+    Below you'll find your temporary password:
 </p>
 
 <div class="otp-code">@Model.Password</div>
 
 <p>
-    Te recomendamos iniciar sesión y cambiarla cuanto antes.
+    We recommend signing in and changing it as soon as possible.
 </p>
 
 <div style="text-align:center">
-    <a href="@Model.LoginUrl" class="button">Iniciar sesión</a>
+    <a href="@Model.LoginUrl" class="button">Sign in</a>
 </div>
 
 <div class="info-box">
-    <p>Esta contraseña es válida hasta que la cambies manualmente desde tu perfil.</p>
+    <p>This password is valid until you manually change it from your profile.</p>
 </div>
 
 <div class="signature">
-    <p>Saludos,<br />El equipo de @Model.AppName</p>
+    <p>Best regards,<br />The @Model.AppName Team</p>
 </div>

@@ -1,24 +1,24 @@
 @model dynamic
 @{
-    ViewBag.Title = "Código de verificación";
+    ViewBag.Title = "Verification code";
     Layout = "Layout";
 }
 
-<h2>Tu código de verificación</h2>
-<p>Hola,</p>
-<p>Has solicitado un código de verificación para @Model.AppName.</p>
-<p>Utiliza el siguiente código para completar la verificación:</p>
+<h2>Your verification code</h2>
+<p>Hello,</p>
+<p>You have requested a verification code for @Model.AppName.</p>
+<p>Use the following code to complete the verification:</p>
 
 <div class="otp-code">@Model.Otp</div>
 
 <div class="info-box">
-    <p><strong>Importante:</strong> Este código es válido por @Model.ExpirationMinutes minutos.</p>
+    <p><strong>Important:</strong> This code is valid for @Model.ExpirationMinutes minutes.</p>
 </div>
 
 <div class="alert alert-warning">
-    <p>Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta. Te recomendamos cambiar tu contraseña inmediatamente.</p>
+    <p>If you didn't request this code, someone might be trying to access your account. We recommend changing your password immediately.</p>
 </div>
 
 <div class="signature">
-    <p>Saludos,<br>El equipo de @Model.AppName</p>
+    <p>Best regards,<br>The @Model.AppName Team</p>
 </div>

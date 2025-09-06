@@ -138,7 +138,7 @@ public class DocumentAccessService : IDocumentAccessService
         _log.LogInformation(
             "Documento accedido exitosamente {DocumentId}, acceso #{AccessCount}",
             accessInfo.DocumentId
-            // accessInfo.AccessCount
+        // accessInfo.AccessCount
         );
 
         return new DocumentAccessResultDto
@@ -164,7 +164,7 @@ public class DocumentAccessService : IDocumentAccessService
             return false;
 
         return accessInfo.ExpiresAt > DateTime.UtcNow;
-            // && accessInfo.AccessCount < accessInfo.MaxAccessCount;
+        // && accessInfo.AccessCount < accessInfo.MaxAccessCount;
     }
 
     private string GenerateSecureCacheKey(

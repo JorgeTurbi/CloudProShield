@@ -20,7 +20,14 @@ public class UserRead : IUserCommandRead
     private readonly ISessionCommandCreate _sessionCreate;
     private readonly IUserValidationService _userValidation;
 
-    public UserRead(ApplicationDbContext context, IMapper mapper, ILogger<UserRead> log, ISessionCommandCreate sessionCreate, IEmailService emailService, IUserValidationService userValidation)
+    public UserRead(
+        ApplicationDbContext context,
+        IMapper mapper,
+        ILogger<UserRead> log,
+        ISessionCommandCreate sessionCreate,
+        IEmailService emailService,
+        IUserValidationService userValidation
+    )
     {
         _context = context;
         _mapper = mapper;
@@ -42,13 +49,20 @@ public class UserRead : IUserCommandRead
             }
 
             var userDTOs = _mapper.Map<List<UserDTO_Only>>(users);
-            return new ApiResponse<List<UserDTO_Only>>(true, "Users retrieved successfully", userDTOs);
+            return new ApiResponse<List<UserDTO_Only>>(
+                true,
+                "Users retrieved successfully",
+                userDTOs
+            );
         }
         catch (Exception ex)
         {
             _log.LogError(ex, "Error retrieving users");
-            return new ApiResponse<List<UserDTO_Only>>(false, "An error occurred while retrieving users", null);
-
+            return new ApiResponse<List<UserDTO_Only>>(
+                false,
+                "An error occurred while retrieving users",
+                null
+            );
         }
     }
 
@@ -69,20 +83,36 @@ public class UserRead : IUserCommandRead
         catch (Exception ex)
         {
             _log.LogError(ex, "Error retrieving user by email");
-            return new ApiResponse<UserDTO_Only>(false, "An error occurred while retrieving the user", null);
+            return new ApiResponse<UserDTO_Only>(
+                false,
+                "An error occurred while retrieving the user",
+                null
+            );
         }
     }
-    public async Task<ApiResponse<string>> LoginUser(UserLoginDTO userLoginDTO, string ipAddress, string device)
+
+    public async Task<ApiResponse<string>> LoginUser(
+        UserLoginDTO userLoginDTO,
+        string ipAddress,
+        string device
+    )
     {
         try
         {
             // 1. Validar usuario usando el servicio de validación
-            var userValidation = await _userValidation.ValidateUserForLogin(userLoginDTO.Email, userLoginDTO.Password);
+            var userValidation = await _userValidation.ValidateUserForLogin(
+                userLoginDTO.Email,
+                userLoginDTO.Password
+            );
 
             if (!userValidation.Success)
             {
                 // Log del intento de login fallido para seguridad
-                _log.LogWarning("Failed login attempt for email: {Email} from IP: {IP}", userLoginDTO.Email, ipAddress);
+                _log.LogWarning(
+                    "Failed login attempt for email: {Email} from IP: {IP}",
+                    userLoginDTO.Email,
+                    ipAddress
+                );
                 return new ApiResponse<string>(false, userValidation.Message, null);
             }
 
@@ -105,13 +135,25 @@ public class UserRead : IUserCommandRead
             catch (Exception emailEx)
             {
                 // No fallar el login si el email no se puede enviar
-                _log.LogWarning(emailEx, "Failed to send login notification email to {Email}", user.Email);
+                _log.LogWarning(
+                    emailEx,
+                    "Failed to send login notification email to {Email}",
+                    user.Email
+                );
             }
 
             // 4. Log del login exitoso
-            _log.LogInformation("Successful login for user: {Email} from IP: {IP}", user.Email, ipAddress);
+            _log.LogInformation(
+                "Successful login for user: {Email} from IP: {IP}",
+                user.Email,
+                ipAddress
+            );
 
-            return new ApiResponse<string>(true, "Login successful", sessionResponse.Data.TokenRequest);
+            return new ApiResponse<string>(
+                true,
+                "Login successful",
+                sessionResponse.Data.TokenRequest
+            );
         }
         catch (Exception ex)
         {
@@ -119,6 +161,7 @@ public class UserRead : IUserCommandRead
             return new ApiResponse<string>(false, "An error occurred during login", null);
         }
     }
+
     public async Task<ApiResponse<UserDTO_Only>> GetUserById(Guid id)
     {
         try
@@ -136,7 +179,11 @@ public class UserRead : IUserCommandRead
         catch (Exception ex)
         {
             _log.LogError(ex, "Error retrieving user by ID");
-            return new ApiResponse<UserDTO_Only>(false, "An error occurred while retrieving the user", null);
+            return new ApiResponse<UserDTO_Only>(
+                false,
+                "An error occurred while retrieving the user",
+                null
+            );
         }
     }
 
@@ -144,9 +191,7 @@ public class UserRead : IUserCommandRead
     {
         try
         {
-            var user = await _context.User
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _context.User.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user is null)
                 return new(false, "User not found", null);
@@ -159,7 +204,7 @@ public class UserRead : IUserCommandRead
                 SurName = user.SurName,
                 Email = user.Email,
                 Phone = user.Phone,
-                Dob = user.Dob
+                Dob = user.Dob,
             };
 
             return new(true, "Profile loaded", profile);
@@ -171,5 +216,3 @@ public class UserRead : IUserCommandRead
         }
     }
 }
-
-

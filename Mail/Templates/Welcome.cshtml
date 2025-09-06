@@ -1,24 +1,24 @@
 @model dynamic
 @{
-    ViewBag.Title = "Confirma tu cuenta";
+    ViewBag.Title = "Confirm your account";
     Layout = "Layout";
 }
 
-<h2>¡Bienvenido a @Model.AppName!</h2>
-<p>Hola,</p>
-<p>Gracias por registrarte. Estamos emocionados de tenerte como nuevo miembro de nuestra comunidad.</p>
-<p>Para empezar a usar nuestra plataforma, necesitamos confirmar tu dirección de correo electrónico.</p>
+<h2>Welcome to @Model.AppName!</h2>
+<p>Hello,</p>
+<p>Thank you for registering. We're excited to have you as a new member of our community.</p>
+<p>To start using our platform, we need to confirm your email address.</p>
 
 <div style="text-align: center;">
-    <a href="@Model.ConfirmUrl" class="button">Confirmar mi cuenta</a>
+    <a href="@Model.ConfirmUrl" class="button">Confirm my account</a>
 </div>
 
 <div class="info-box">
-    <p>Una vez confirmada tu cuenta, podrás acceder a todas las funcionalidades de @Model.AppName.</p>
+    <p>Once your account is confirmed, you'll be able to access all @Model.AppName features.</p>
 </div>
 
-<p>Si no solicitaste esta cuenta, puedes ignorar este correo electrónico.</p>
+<p>If you didn't request this account, you can ignore this email.</p>
 
 <div class="signature">
-    <p>Saludos,<br>El equipo de @Model.AppName</p>
+    <p>Best regards,<br>The @Model.AppName Team</p>
 </div>

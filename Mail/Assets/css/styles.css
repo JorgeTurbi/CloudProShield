@@ -1,4 +1,4 @@
-/* Estilos base */
+/* Base styles */
 body, html {
   margin: 0;
   padding: 0;
@@ -8,7 +8,7 @@ body, html {
   line-height: 1.6;
 }
 
-/* Contenedor principal */
+/* Main container */
 .container {
   max-width: 600px;
   margin: 20px auto;
@@ -19,28 +19,43 @@ body, html {
   overflow: hidden;
 }
 
-/* Encabezado */
+/* Header - Enhanced for better logo presentation */
 .header {
-  text-align:center;
-  padding:30px 20px;        /* ← más alto */
-  background:linear-gradient(135deg,#4285f4 0%,#34a853 100%);
-  color:#fff;
+  text-align: center;
+  padding: 35px 20px 25px; /* Increased top padding for better logo spacing */
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  color: #fff;
+  position: relative;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #34a853 0%, #4285f4 100%);
 }
 
 .header h1 {
-  margin: 5px 0 0;
+  margin: 15px 0 0; /* Increased margin for better spacing with logo */
   font-weight: 600;
   font-size: 24px;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+/* Logo - Optimized for the new CS shield logo */
 .logo {
-  max-width: 160px;
+  max-width: 140px; /* Slightly reduced for better proportion with shield design */
   height: auto;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  filter: brightness(1.1); /* Slight brightness boost for better visibility on gradient */
+  transition: transform 0.3s ease;
 }
 
-/* Contenido principal */
+/* Main content */
 .content {
   padding: 35px 30px;
   line-height: 1.7;
@@ -53,6 +68,8 @@ body, html {
   font-size: 22px;
   font-weight: 600;
   margin-bottom: 20px;
+  border-bottom: 2px solid #e8f0fe;
+  padding-bottom: 10px;
 }
 
 .content p {
@@ -73,7 +90,7 @@ body, html {
   font-weight: 600;
 }
 
-/* Botones */
+/* Buttons - Enhanced with better gradients matching the logo */
 .button {
   display: inline-block;
   padding: 14px 28px;
@@ -86,6 +103,8 @@ body, html {
   text-align: center;
   box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
   transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
 }
 
 .button:hover {
@@ -94,30 +113,61 @@ body, html {
   transform: translateY(-1px);
 }
 
-/* Códigos OTP */
+/* OTP codes - Better visual hierarchy */
 .otp-code {
   letter-spacing: 8px;
   font-size: 36px;
   font-weight: bold;
   text-align: center;
   margin: 30px 0;
-  padding: 20px;
+  padding: 25px 20px;
   background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
   border-radius: 12px;
   border: 2px solid #4285f4;
   color: #4285f4;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.1);
 }
 
-/* Información destacada */
+.otp-code::before {
+  content: '🔐';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 0 10px;
+  font-size: 20px;
+}
+
+/* Information boxes - Enhanced design */
 .info-box {
   background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
   border-left: 4px solid #4285f4;
-  padding: 15px 20px;
+  padding: 18px 20px;
   margin: 20px 0;
   border-radius: 0 8px 8px 0;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(66, 133, 244, 0.1);
 }
 
-/* Footer */
+.info-box::before {
+  content: 'ℹ️';
+  position: absolute;
+  top: 18px;
+  left: -12px;
+  background: #4285f4;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+/* Footer - Improved spacing and typography */
 .footer {
   text-align: center;
   padding: 25px 20px;
@@ -131,13 +181,21 @@ body, html {
   margin: 5px 0;
 }
 
-/* Detalles de información */
+/* Details sections - Better structure for login/security info */
 .details {
   background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
   border-radius: 12px;
   padding: 20px;
   margin: 20px 0;
   border: 1px solid #dadce0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.details h3 {
+  margin-top: 0;
+  color: #4285f4;
+  font-size: 16px;
+  margin-bottom: 15px;
 }
 
 .details ul {
@@ -147,22 +205,79 @@ body, html {
 }
 
 .details li {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #dadce0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .details li:last-child {
   border-bottom: none;
 }
 
-/* Separador */
-.divider {
-  height: 1px;
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-  margin: 25px 0;
+.details li strong {
+  color: #333;
+  min-width: 120px;
+  font-weight: 600;
 }
 
-/* Responsive */
+/* Divider */
+.divider {
+  height: 2px;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  margin: 25px 0;
+  border-radius: 1px;
+}
+
+/* Security alerts - Enhanced for better visibility */
+.alert {
+  padding: 16px 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  font-weight: 500;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-warning {
+  background-color: #fef7e0;
+  border-left: 4px solid #f9ab00;
+  color: #b06000;
+}
+
+.alert-warning::before {
+  content: '⚠️';
+  position: absolute;
+  top: 16px;
+  left: -12px;
+  background: #f9ab00;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
+  border-left: 4px solid #4285f4;
+  color: #1a73e8;
+}
+
+/* Signature section */
+.signature {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #e8eaed;
+  font-style: italic;
+  color: #666;
+}
+
+/* Responsive design */
 @media only screen and (max-width: 640px) {
   .container {
     width: 100%;
@@ -178,9 +293,29 @@ body, html {
     display: block;
     text-align: center;
   }
+  
+  .logo {
+    max-width: 120px; /* Smaller on mobile */
+  }
+  
+  .otp-code {
+    font-size: 28px;
+    letter-spacing: 6px;
+    padding: 20px 15px;
+  }
+  
+  .details li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .details li strong {
+    min-width: auto;
+  }
 }
 
-/* Iconos y elementos visuales */
+/* Icons and visual elements */
 .icon {
   display: inline-block;
   width: 20px;
@@ -189,29 +324,31 @@ body, html {
   vertical-align: middle;
 }
 
-/* Elementos de alerta */
-.alert {
-  padding: 15px 20px;
+/* Success states */
+.success-indicator {
+  color: #34a853;
+  font-size: 48px;
+  text-align: center;
   margin: 20px 0;
-  border-radius: 8px;
-  font-weight: 500;
 }
 
-.alert-warning {
-  background-color: #fef7e0;
-  border-left: 4px solid #f9ab00;
-  color: #b06000;
+/* Loading/processing states */
+.processing-indicator {
+  text-align: center;
+  margin: 20px 0;
 }
 
-.alert-info {
-  background: linear-gradient(135deg, #e8f0fe 0%, #e8f5e8 100%);
-  border-left: 4px solid #4285f4;
-  color: #1a73e8;
+.processing-indicator::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #4285f4;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
 }
 
-/* Sección de firma */
-.signature {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #dadce0;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

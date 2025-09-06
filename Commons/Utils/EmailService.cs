@@ -82,7 +82,7 @@ public class EmailService : IEmailService
 
             // Agregar propiedades comunes si no existen
             if (!expandoDict.ContainsKey("AppName"))
-                expandoDict["AppName"] = _cfg["Application:Name"] ?? "CloudShield";
+                expandoDict["AppName"] = _cfg["Application:Name"] ?? "CloudPro Suite";
 
             if (!expandoDict.ContainsKey("Year"))
                 expandoDict["Year"] = DateTime.Now.Year;
@@ -97,8 +97,8 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             // Si hay un error al renderizar la plantilla, utilizar un contenido alternativo
-            Console.WriteLine($"Error renderizando la plantilla {templateName}: {ex.Message}");
-            throw new Exception($"Error al procesar la plantilla de correo: {ex.Message}", ex);
+            Console.WriteLine($"Error rendering template {templateName}: {ex.Message}");
+            throw new Exception($"Error processing email template: {ex.Message}", ex);
         }
     }
 
@@ -138,7 +138,7 @@ public class EmailService : IEmailService
     /* ---------- Confirmación de cuenta / Bienvenida ---------- */
     public async Task SendConfirmationEmailAsync(string email, string token, string originUrl)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
         var baseUrl = string.IsNullOrEmpty(originUrl) ? _cfg["Frontend:BaseUrl"] : originUrl;
         var confirmUrl = $"{baseUrl}/confirm?token={token}";
 
@@ -150,13 +150,13 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("Welcome", model);
-        await SendAsync(email, $"Confirma tu cuenta - {appName}", htmlBody);
+        await SendAsync(email, $"Confirm your account - {appName}", htmlBody);
     }
 
     /* ---------- Confirmación de cuenta exitosa o Validada ---------- */
     public async Task SendAccountConfirmedAsync(string email)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
         var loginUrl = $"{_cfg["Frontend:BaseUrl"]}/login";
 
         var model = new
@@ -167,13 +167,13 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("AccountConfirmed", model);
-        await SendAsync(email, $"Cuenta confirmada - {appName}", htmlBody);
+        await SendAsync(email, $"Account confirmed - {appName}", htmlBody);
     }
 
     /* ---------- Link para restablecer contraseña ---------- */
     public async Task SendResetLinkAsync(string to, string resetLink)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
 
         var model = new
         {
@@ -184,13 +184,13 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("ForgotPassword", model);
-        await SendAsync(to, $"Restablecimiento de contraseña – {appName}", htmlBody);
+        await SendAsync(to, $"Password reset – {appName}", htmlBody);
     }
 
     /* ---------- OTP ---------- */
     public async Task SendOtpAsync(string to, string otp)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
 
         var model = new
         {
@@ -201,13 +201,13 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("Otp", model);
-        await SendAsync(to, $"Código de verificación – {appName}", htmlBody);
+        await SendAsync(to, $"Verification code – {appName}", htmlBody);
     }
 
     /* ---------- Notificación de contraseña cambiada ---------- */
     public async Task SendPasswordChangedAsync(string to, string ipInfo)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
 
         var model = new
         {
@@ -218,13 +218,13 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("PasswordChanged", model);
-        await SendAsync(to, $"Contraseña actualizada – {appName}", htmlBody);
+        await SendAsync(to, $"Password updated – {appName}", htmlBody);
     }
 
     /* ---------- Notificación de inicio de sesión ---------- */
     public async Task SendLoginNotificationAsync(string to, string ipInfo, string device)
     {
-        var appName = _cfg["Application:Name"] ?? "CloudShield";
+        var appName = _cfg["Application:Name"] ?? "CloudPro Suite";
 
         var model = new
         {
@@ -236,7 +236,7 @@ public class EmailService : IEmailService
         };
 
         var htmlBody = await RenderTemplateAsync("Login", model);
-        await SendAsync(to, $"Nuevo inicio de sesión – {appName}", htmlBody);
+        await SendAsync(to, $"New sign-in detected – {appName}", htmlBody);
     }
 
     /* ---------- Notificación de creacion de cuenta automática via TaxPro ---------- */
@@ -254,7 +254,7 @@ public class EmailService : IEmailService
     /* ---------- Método genérico para enviar cualquier plantilla ---------- */
     public async Task SendAutoCreatedAccountAsync(string to, string tempPassword, string loginUrl)
     {
-        var app = _cfg["Application:Name"] ?? "CloudShield";
+        var app = _cfg["Application:Name"] ?? "CloudPro Suite";
 
         var model = new
         {
@@ -265,6 +265,6 @@ public class EmailService : IEmailService
         };
 
         var html = await RenderTemplateAsync("AccountTaxProCreated", model);
-        await SendAsync(to, $"Tu nueva cuenta en {app}", html);
+        await SendAsync(to, $"Your new account at {app}", html);
     }
 }
